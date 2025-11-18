@@ -1,11 +1,9 @@
-const RestaurantOrder = require('../models/RestaurantOrder');
-const KOT = require('../models/KOT');
-const Bill = require('../models/Bill');
-const Item = require('../models/Items');
-const Table = require('../models/Table');
-const User = require('../models/User');
+const BanquetBooking = require('../models/banquetBooking');
+const BanquetCategory = require('../models/banquetCategory');
+const BanquetMenu = require('../models/BanquetMenu');
 const Booking = require('../models/Booking');
-const Room = require('../models/Room');
+const Category = require('../models/Category');
+const Checkout = require('../models/Checkout');
 
 // Universal search across all models
 exports.universalSearch = async (req, res) => {
@@ -21,7 +19,7 @@ exports.universalSearch = async (req, res) => {
       results[type] = await searchInModel(type, query, searchLimit);
     } else {
       // Search across all models
-      const models = ['orders', 'kots', 'bills', 'items', 'tables', 'users', 'bookings', 'rooms'];
+      const models = ['banquetBookings', 'banquetCategories', 'banquetMenus', 'bookings', 'categories', 'checkouts'];
       
       for (const modelType of models) {
         results[modelType] = await searchInModel(modelType, query, searchLimit);
@@ -40,62 +38,33 @@ const searchInModel = async (type, query, limit) => {
   
   try {
     switch (type) {
-      case 'orders':
-        return await RestaurantOrder.find({
+      case 'banquetBookings':
+        return await BanquetBooking.find({
           $or: [
-            { staffName: searchRegex },
-            { phoneNumber: searchRegex },
-            { tableNo: searchRegex },
-            { notes: searchRegex }
+            { name: searchRegex },
+            { email: searchRegex },
+            { number: searchRegex },
+            { hall: searchRegex },
+            { functionType: searchRegex }
           ]
-        }).limit(limit).populate('items.itemId', 'name');
+        }).limit(limit);
 
-      case 'kots':
-        return await KOT.find({
+      case 'banquetCategories':
+        return await BanquetCategory.find({
           $or: [
-            { kotNumber: searchRegex },
-            { tableNo: searchRegex },
-            { status: searchRegex }
+            { name: searchRegex },
+            { description: searchRegex }
           ]
-        }).limit(limit).populate('items.itemId', 'name');
+        }).limit(limit);
 
-      case 'bills':
-        return await Bill.find({
-          $or: [
-            { billNumber: searchRegex },
-            { tableNo: searchRegex },
-            { paymentMethod: searchRegex },
-            { paymentStatus: searchRegex }
-          ]
-        }).limit(limit).populate('orderId', 'staffName');
-
-      case 'items':
-        return await Item.find({
+      case 'banquetMenus':
+        return await BanquetMenu.find({
           $or: [
             { name: searchRegex },
             { category: searchRegex },
             { description: searchRegex }
           ]
         }).limit(limit);
-
-      case 'tables':
-        return await Table.find({
-          $or: [
-            { tableNumber: searchRegex },
-            { location: searchRegex },
-            { status: searchRegex }
-          ]
-        }).limit(limit);
-
-      case 'users':
-        return await User.find({
-          $or: [
-            { username: searchRegex },
-            { email: searchRegex },
-            { role: searchRegex },
-            { restaurantRole: searchRegex }
-          ]
-        }).limit(limit).select('-password');
 
       case 'bookings':
         return await Booking.find({
@@ -106,12 +75,19 @@ const searchInModel = async (type, query, limit) => {
           ]
         }).limit(limit);
 
-      case 'rooms':
-        return await Room.find({
+      case 'categories':
+        return await Category.find({
           $or: [
-            { room_number: searchRegex },
-            { room_type: searchRegex },
-            { status: searchRegex }
+            { name: searchRegex },
+            { description: searchRegex }
+          ]
+        }).limit(limit);
+
+      case 'checkouts':
+        return await Checkout.find({
+          $or: [
+            { guestName: searchRegex },
+            { roomNumber: searchRegex }
           ]
         }).limit(limit);
 
@@ -145,18 +121,18 @@ const searchBySpecificField = async (model, field, value, limit) => {
   const filter = { [field]: searchRegex };
 
   switch (model) {
-    case 'orders':
-      return await RestaurantOrder.find(filter).limit(limit);
-    case 'kots':
-      return await KOT.find(filter).limit(limit);
-    case 'bills':
-      return await Bill.find(filter).limit(limit);
-    case 'items':
-      return await Item.find(filter).limit(limit);
-    case 'tables':
-      return await Table.find(filter).limit(limit);
-    case 'users':
-      return await User.find(filter).limit(limit).select('-password');
+    case 'banquetBookings':
+      return await BanquetBooking.find(filter).limit(limit);
+    case 'banquetCategories':
+      return await BanquetCategory.find(filter).limit(limit);
+    case 'banquetMenus':
+      return await BanquetMenu.find(filter).limit(limit);
+    case 'bookings':
+      return await Booking.find(filter).limit(limit);
+    case 'categories':
+      return await Category.find(filter).limit(limit);
+    case 'checkouts':
+      return await Checkout.find(filter).limit(limit);
     default:
       return [];
   }

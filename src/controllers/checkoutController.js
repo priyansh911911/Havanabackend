@@ -1,8 +1,5 @@
 const Checkout = require('../models/Checkout');
 const Booking = require('../models/Booking');
-const RestaurantOrder = require('../models/RestaurantOrder');
-const Laundry = require('../models/Laundry');
-const RoomInspection = require('../models/RoomInspection');
 const mongoose = require('mongoose');
 
 // Create checkout record
@@ -10,144 +7,18 @@ exports.createCheckout = async (req, res) => {
   try {
     const { bookingId } = req.body;
 
-    // Get all service charges for this booking
-    const [restaurantOrders, laundryServices, inspections] = await Promise.all([
-      RestaurantOrder.find({ bookingId }).populate('items.itemId'),
-      Laundry.find({ bookingId }).populate('items.rateId'),
-      RoomInspection.find({ bookingId })
-    ]);
-
-    // Get booking details for room charges
+    // Get booking details
     const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    // Calculate restaurantCharges correctly as sum of item amounts
-    let restaurantCharges = 0;
-    const restaurantItems = restaurantOrders.map(order => {
-      const items = order.items.map(item => {
-        const quantity = Number(item.quantity) || 0;
-        const price = Number(item.itemId?.Price) || Number(item.price) || 0;
-        const amount = price * quantity;
-
-        restaurantCharges += amount; // accumulate total
-
-        return {
-          itemId: item.itemId?._id,
-          itemName: item.itemId?.name || item.itemName,
-          quantity,
-          price,
-          rate: price,
-          amount
-        };
-      });
-
-      return {
-        orderId: order._id,
-        items,
-        orderAmount: items.reduce((sum, i) => sum + i.amount, 0),
-        orderDate: order.createdAt
-      };
-    });
-
-    // Calculate laundryCharges correctly
-    let laundryCharges = 0;
-    const laundryItems = laundryServices.map(service => {
-      const items = service.items.map(item => {
-        const quantity = Number(item.quantity) || 0;
-        const rate = Number(item.rateId?.rate) || 0;
-        const amount = Number(item.calculatedAmount) || rate * quantity || 0;
-    
-        laundryCharges += amount;
-    
-        return {
-          itemName: item.itemName,
-          quantity,
-          rate,
-          amount
-        };
-      });
-    
-      return {
-        laundryId: service._id,
-        items,
-        serviceAmount: items.reduce((sum, i) => sum + i.amount, 0),
-        serviceDate: service.createdAt
-      };
-    });    
-
-    // Prepare inspection items
-    let inspectionCharges = 0;
-    const inspectionItems = inspections.map(inspection => {
-      let items = [];
-
-      if (inspection.checklist?.length > 0) {
-        const damagedItems = inspection.checklist.filter(item =>
-          item.status !== 'ok' && ['missing', 'damaged', 'used'].includes(item.status)
-        );
-
-        if (damagedItems.length > 0) {
-          const chargePerItem = (Number(inspection.totalCharges) || 0) / damagedItems.length;
-          items = damagedItems.map(item => {
-            const quantity = Number(item.quantity) || 1;
-            const costPerUnit = Number(item.costPerUnit) || chargePerItem;
-            const amount = costPerUnit * quantity;
-
-            inspectionCharges += amount;
-
-            return {
-              itemName: item.item,
-              quantity,
-              status: item.status,
-              costPerUnit,
-              amount
-            };
-          });
-        }
-      }
-
-      // If no damaged items but charges exist, create sample items
-      if (items.length === 0 && Number(inspection.totalCharges) > 0) {
-        const sampleDamagedItems = [
-          { item: 'Towel', quantity: 1, status: 'missing' },
-          { item: 'Bedsheet', quantity: 1, status: 'damaged' }
-        ];
-        const chargePerItem = (Number(inspection.totalCharges) || 0) / sampleDamagedItems.length;
-        items = sampleDamagedItems.map(item => {
-          const amount = chargePerItem;
-          inspectionCharges += amount;
-
-          return {
-            itemName: item.item,
-            quantity: Number(item.quantity) || 1,
-            status: item.status,
-            costPerUnit: chargePerItem,
-            amount
-          };
-        });
-      }
-
-      // Convert items to invoice format
-      const invoiceItems = items.map(item => ({
-        description: `${item.itemName} (${item.status})`,
-        amount: Number(item.amount) || 0,
-        _id: new mongoose.Types.ObjectId()
-      }));
-
-      return {
-        inspectionId: inspection._id,
-        charges: Number(inspection.totalCharges) || 0,
-        inspectionDate: inspection.createdAt,
-        remarks: inspection.remarks,
-        items: invoiceItems
-      };
-    });
-
-    // Room booking charges
+    // Calculate charges
+    const restaurantCharges = 0;
+    const laundryCharges = 0;
+    const inspectionCharges = 0;
     const bookingCharges = Number(booking.rate) || 0;
-
-    const totalAmount = restaurantCharges + laundryCharges + inspectionCharges + bookingCharges;
+    const totalAmount = bookingCharges;
 
     const checkout = await Checkout.create({
       bookingId,
@@ -157,9 +28,9 @@ exports.createCheckout = async (req, res) => {
       bookingCharges,
       totalAmount,
       serviceItems: {
-        restaurant: restaurantItems,
-        laundry: laundryItems,
-        inspection: inspectionItems
+        restaurant: [],
+        laundry: [],
+        inspection: []
       },
       pendingAmount: totalAmount
     });

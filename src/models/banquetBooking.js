@@ -1,12 +1,12 @@
 const mongoose = require("mongoose");
 
 const bookingSchema = new mongoose.Schema({
-  name: { type: String,  trim: true },
-  email: { type: String,  trim: true },
-  number: { type: String,  trim: true },
-  whatsapp: { type: String,  trim: true },
-  pax: { type: Number, },
-  startDate: { type: Date, },
+  name: { type: String, required: true, trim: true },
+  email: { type: String, required: true, trim: true },
+  number: { type: String, required: true, trim: true },
+  whatsapp: { type: String, trim: true },
+  pax: { type: Number, required: true, min: 1 },
+  startDate: { type: Date, required: true },
  gst:{type:Number},
 
   ratePlan: { type: String, },
