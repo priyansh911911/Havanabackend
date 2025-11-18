@@ -20,7 +20,9 @@ const server = createServer(app);
 // Middleware
 const allowedOrigins = [
   "http://localhost:5173",
-  "http://localhost:3000",
+  "http://localhost:4000",
+  "https://havana-f-git-main-anshusharma42019s-projects.vercel.app",
+  "https://havanabackend.vercel.app"
   
 ];
 
