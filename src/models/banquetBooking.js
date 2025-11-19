@@ -71,6 +71,8 @@ bookingStatus: {
   default: "Tentative",
 },
   notes: { type: String, trim: true },
+  menuItems: { type: String, trim: true }, // Comma-separated list of selected menu items
+  categorizedMenu: { type: mongoose.Schema.Types.Mixed, default: {} }, // Menu items organized by category
 
   customerRef: { type: String, unique: true },
   

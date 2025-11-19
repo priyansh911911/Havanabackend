@@ -31,6 +31,11 @@ exports.createBooking = async (req, res) => {
       if (bookingData[f]) bookingData[f] = Number(bookingData[f]);
     });
 
+    // Ensure categorizedMenu is preserved in booking data
+    if (req.body.categorizedMenu) {
+      bookingData.categorizedMenu = req.body.categorizedMenu;
+    }
+
     // ✅ Handle advance array properly
     if (Array.isArray(bookingData.advance)) {
       bookingData.advance = bookingData.advance.map(a => ({
@@ -107,7 +112,7 @@ exports.getBookingById = async (req, res) => {
 
     res.status(200).json({
       ...booking.toObject(),
-      categorizedMenu: menu ? menu.toObject() : null
+      categorizedMenuFromCollection: menu ? menu.toObject() : null
     });
   } catch (err) {
     console.error("Error fetching booking:", err.message);
@@ -291,7 +296,14 @@ exports.getAllPagination = async (req, res) => {
       .sort({ createdAt: -1 });  // Most recent bookings first
 
     if (!bookings || bookings.length === 0) {
-      return res.status(404).json({ message: 'No bookings found' });
+      return res.status(200).json({
+        message: 'No bookings found',
+        data: [],
+        total: 0,
+        page: 1,
+        totalPages: 0,
+        limit,
+      });
     }
 
     const totalCount = await BanquetBooking.countDocuments();
