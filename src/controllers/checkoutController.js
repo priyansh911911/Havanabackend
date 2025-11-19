@@ -1,6 +1,7 @@
 const Checkout = require('../models/Checkout');
 const Booking = require('../models/Booking');
 const mongoose = require('mongoose');
+const { TAX_CONFIG, calculateTaxableAmount, calculateCGST, calculateSGST } = require('../utils/taxConfig');
 
 // Create checkout record
 exports.createCheckout = async (req, res) => {
@@ -109,9 +110,9 @@ exports.getInvoice = async (req, res) => {
     const currentDate = new Date();
     const billNo = `P${Date.now().toString().slice(-10)}`;
     
-    const taxableAmount = checkout.bookingCharges / 1.12;
-    const cgstAmount = taxableAmount * 0.06;
-    const sgstAmount = taxableAmount * 0.06;
+    const taxableAmount = calculateTaxableAmount(checkout.bookingCharges);
+    const cgstAmount = calculateCGST(taxableAmount);
+    const sgstAmount = calculateSGST(taxableAmount);
     
     const invoice = {
       invoiceDetails: {
@@ -141,7 +142,7 @@ exports.getInvoice = async (req, res) => {
           pax: 2,
           declaredRate: checkout.bookingCharges,
           hsn: 996311,
-          rate: 6,
+          rate: TAX_CONFIG.DISPLAY_RATE,
           cgstRate: cgstAmount,
           sgstRate: sgstAmount,
           amount: checkout.bookingCharges
@@ -149,7 +150,7 @@ exports.getInvoice = async (req, res) => {
       ],
       taxes: [
         {
-          taxRate: 6,
+          taxRate: TAX_CONFIG.DISPLAY_RATE,
           taxableAmount: taxableAmount,
           cgst: cgstAmount,
           sgst: sgstAmount,
