@@ -6,13 +6,16 @@ const { Server } = require("socket.io");
 require("dotenv").config();
 
 const categoryRoutes = require("./src/routes/category.js");
+const roomRoutes = require("./src/routes/roomRoutes.js");
+const bookingRoutes = require("./src/routes/booking.js");
 const searchRoutes = require("./src/routes/searchRoutes");
 const checkoutRoutes = require("./src/routes/checkoutRoutes.js");
 const banquetMenuRoutes = require("./src/routes/banquetMenuRoutes.js");
 const banquetBookingRoutes = require("./src/routes/banquetBookingRoutes.js");
 const banquetCategoryRoutes = require("./src/routes/banquetCategoryRoutes.js");
-const { restrictPantryAccess } = require("./src/middleware/authMiddleware.js");
 
+const planLimitRoutes = require("./src/routes/planLimitRoutes.js");
+const roomInventoryChecklistRoutes = require("./src/routes/roomInventoryChecklistRoutes.js");
 const path = require("path");
 // Initialize express app
 const app = express();
@@ -61,8 +64,7 @@ app.use(express.json({ limit: "50mb" }));
 // Serve uploaded files for fallback method
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Apply pantry access restriction globally
-app.use("/api", restrictPantryAccess);
+// Authentication disabled
 
 // Database connection
 let isConnected = false;
@@ -87,11 +89,15 @@ app.use(async (req, res, next) => {
 
 // Routes
 app.use("/api/categories", categoryRoutes);
+app.use("/api/rooms", roomRoutes);
+app.use("/api/bookings", bookingRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/checkout", checkoutRoutes);
 app.use("/api/banquet-menus", banquetMenuRoutes);
 app.use("/api/banquet-bookings", banquetBookingRoutes);
 app.use("/api/banquet-categories", banquetCategoryRoutes);
+app.use("/api/plan-limits", planLimitRoutes);
+app.use("/api/room-inventory-checklists", roomInventoryChecklistRoutes);
 
 // Health check endpoint
 app.get("/health", (req, res) => {

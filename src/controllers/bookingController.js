@@ -1,9 +1,7 @@
 const Booking = require("../models/Booking.js");
 const Category = require("../models/Category.js");
 const Room = require("../models/Room.js");
-const Housekeeping = require("../models/Housekeeping.js");
 const mongoose = require('mongoose');
-const  Reservation = require("../models/Reservation.js");
 
 // 🔹 Generate unique GRC number
 const generateGRC = async () => {
@@ -23,7 +21,7 @@ exports.bookRoom = async (req, res) => {
       const category = await Category.findById(categoryId);
       if (!category) throw new Error(`Category not found: ${categoryId}`);
 
-      const availableRooms = await Room.find({ category: categoryId, status: 'available' }).limit(count);
+      const availableRooms = await Room.find({ categoryId: categoryId, status: 'available' }).limit(count);
       if (availableRooms.length < count) {
         throw new Error(`Not enough available rooms in ${category.name}`);
       }
@@ -33,12 +31,10 @@ exports.bookRoom = async (req, res) => {
         const room = availableRooms[i];
        // const referenceNumber = `REF-${Math.floor(100000 + Math.random() * 900000)}`;
         const grcNo = await generateGRC();
-        const reservationId = extraDetails.reservationId || null;
 
         // Create booking document according to updated flat schema
         const booking = new Booking({
           grcNo,
-          reservationId,
           categoryId,
           bookingDate: extraDetails.bookingDate || new Date(),
           numberOfRooms: 1,
@@ -215,7 +211,7 @@ exports.checkoutBooking = async (req, res) => {
 
     if (!room && booking.categoryId) {
       room = await Room.findOne({
-        category: booking.categoryId,
+        categoryId: booking.categoryId,
         room_number: String(booking.roomNumber)
       });
     }
@@ -225,33 +221,14 @@ exports.checkoutBooking = async (req, res) => {
     }
 
     if (room) {
-      // Set Room.status to 'maintenance' when checking out
-      room.status = 'maintenance';
+      // Set Room.status to 'available' when checking out
+      room.status = 'available';
       await room.save();
-
-      // Check if a housekeeping task already exists for this room
-      const existingTask = await Housekeeping.findOne({
-        roomId: room._id,
-        status: { $in: ['pending', 'in-progress'] }
-      });
-
-      if (!existingTask) {
-        // Create a housekeeping task for this room
-        const housekeepingTask = new Housekeeping({
-          roomId: room._id,
-          cleaningType: 'checkout',
-          notes: `Room checkout cleaning and inventory check for ${booking.name}`,
-          priority: 'high',
-          status: 'pending'
-        });
-
-        await housekeepingTask.save();
-      }
     }
 
     res.json({
       success: true,
-      message: 'Checkout completed. Room set to maintenance status. Housekeeping task created.',
+      message: 'Checkout completed. Room is now available.',
       booking
     });
   } catch (error) {
@@ -279,7 +256,7 @@ exports.deleteBooking = async (req, res) => {
 
     if (!room && booking.categoryId) {
       room = await Room.findOne({
-        category: booking.categoryId,
+        categoryId: booking.categoryId,
         room_number: String(booking.roomNumber)
       });
     }
@@ -289,33 +266,14 @@ exports.deleteBooking = async (req, res) => {
     }
 
     if (room) {
-      // Set Room.status to 'maintenance' when unbooking
-      room.status = 'maintenance';
+      // Set Room.status to 'available' when unbooking
+      room.status = 'available';
       await room.save();
-
-      // Check if a housekeeping task already exists for this room
-      const existingTask = await Housekeeping.findOne({
-        roomId: room._id,
-        status: { $in: ['pending', 'in-progress'] }
-      });
-
-      if (!existingTask) {
-        // Create a housekeeping task for this room
-        const housekeepingTask = new Housekeeping({
-          roomId: room._id,
-          cleaningType: 'checkout',
-          notes: 'Room needs cleaning after checkout',
-          priority: 'high',
-          status: 'pending'
-        });
-
-        await housekeepingTask.save();
-      }
     }
 
     res.json({
       success: true,
-      message: 'Room set to maintenance status. Housekeeping task created.'
+      message: 'Booking cancelled. Room is now available.'
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -369,7 +327,7 @@ exports.updateBooking = async (req, res) => {
 
       'temperature', 'fromCSV', 'epabx', 'vip',
 
-      'status', 'categoryId', 'reservationId',
+      'status', 'categoryId',
 
       'bookingDate', 'numberOfRooms', 'checkInDate', 'checkOutDate', 'days', 'timeIn', 'timeOut'
     ];
@@ -487,15 +445,10 @@ exports.getDetailsByGrc = async (req, res) => {
   try {
     const { grcNo } = req.params;
 
-    // First check if booking exists for GRC
-    let record = await Booking.findOne({ grcNo });
-    if (!record) {
-      // If not, check in reservation
-      record = await Reservation.findOne({ grcNo });
-    }
+    const record = await Booking.findOne({ grcNo });
 
     if (!record) {
-      return res.status(404).json({ message: "No booking/reservation found for this GRC" });
+      return res.status(404).json({ message: "No booking found for this GRC" });
     }
 
     res.json(record);

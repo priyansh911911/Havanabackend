@@ -4,6 +4,7 @@ const BanquetMenu = require('../models/BanquetMenu');
 const Booking = require('../models/Booking');
 const Category = require('../models/Category');
 const Checkout = require('../models/Checkout');
+const Room = require('../models/Room');
 
 // Universal search across all models
 exports.universalSearch = async (req, res) => {
@@ -19,7 +20,7 @@ exports.universalSearch = async (req, res) => {
       results[type] = await searchInModel(type, query, searchLimit);
     } else {
       // Search across all models
-      const models = ['banquetBookings', 'banquetCategories', 'banquetMenus', 'bookings', 'categories', 'checkouts'];
+      const models = ['banquetBookings', 'banquetCategories', 'banquetMenus', 'bookings', 'categories', 'checkouts', 'rooms'];
       
       for (const modelType of models) {
         results[modelType] = await searchInModel(modelType, query, searchLimit);
@@ -69,9 +70,11 @@ const searchInModel = async (type, query, limit) => {
       case 'bookings':
         return await Booking.find({
           $or: [
-            { guestName: searchRegex },
-            { phoneNumber: searchRegex },
-            { email: searchRegex }
+            { name: searchRegex },
+            { mobileNo: searchRegex },
+            { email: searchRegex },
+            { grcNo: searchRegex },
+            { roomNumber: searchRegex }
           ]
         }).limit(limit);
 
@@ -86,10 +89,19 @@ const searchInModel = async (type, query, limit) => {
       case 'checkouts':
         return await Checkout.find({
           $or: [
-            { guestName: searchRegex },
-            { roomNumber: searchRegex }
+            { 'bookingId.name': searchRegex },
+            { 'bookingId.roomNumber': searchRegex }
           ]
-        }).limit(limit);
+        }).populate('bookingId', 'name roomNumber').limit(limit);
+        
+      case 'rooms':
+        return await Room.find({
+          $or: [
+            { title: searchRegex },
+            { room_number: searchRegex },
+            { description: searchRegex }
+          ]
+        }).populate('categoryId', 'name').limit(limit);
 
       default:
         return [];
@@ -133,6 +145,8 @@ const searchBySpecificField = async (model, field, value, limit) => {
       return await Category.find(filter).limit(limit);
     case 'checkouts':
       return await Checkout.find(filter).limit(limit);
+    case 'rooms':
+      return await Room.find(filter).populate('categoryId', 'name').limit(limit);
     default:
       return [];
   }

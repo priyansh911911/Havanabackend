@@ -18,7 +18,7 @@ exports.createRoom = async (req, res) => {
     } = req.body;
     const room = new Room({
       title,
-      category,
+      categoryId: category,
       room_number, // Ensure room_number is included
       price,
       extra_bed,
@@ -33,7 +33,7 @@ exports.createRoom = async (req, res) => {
     const categories = await Room.aggregate([
       {
         $group: {
-          _id: "$category",
+          _id: "$categoryId",
           count: { $sum: 1 },
           roomNumbers: { $push: "$room_number" },
         },
@@ -66,13 +66,13 @@ exports.createRoom = async (req, res) => {
 // Get all rooms
 exports.getRooms = async (req, res) => {
   try {
-    const rooms = await Room.find().populate("category");
+    const rooms = await Room.find().populate("categoryId");
     
     // Map rooms to ensure safe access to category properties
     const safeRooms = rooms.map(room => {
       const roomObj = room.toObject();
-      if (!roomObj.category) {
-        roomObj.category = { name: 'Unknown' };
+      if (!roomObj.categoryId) {
+        roomObj.categoryId = { name: 'Unknown' };
       }
       return roomObj;
     });
@@ -86,14 +86,14 @@ exports.getRooms = async (req, res) => {
 // Get a room by ID
 exports.getRoomById = async (req, res) => {
   try {
-    const room = await Room.findById(req.params.id).populate("category");
+    const room = await Room.findById(req.params.id).populate("categoryId");
     if (!room) return res.status(404).json({ error: "Room not found" });
     
     // Ensure safe access to category properties
     const safeRoom = room.toObject();
-    if (!safeRoom.category) {
-      safeRoom.category = { name: 'Unknown' };
-    }
+    if (!safeRoom.categoryId) {
+      safeRoom.categoryId = { name: 'Unknown' };
+    };
     
     res.json(safeRoom);
   } catch (error) {
@@ -132,9 +132,9 @@ exports.getRoomsByCategory = async (req, res) => {
   try {
     const { categoryId } = req.params;
 
-    const rooms = await Room.find({ category: categoryId }).populate("category");
+    const rooms = await Room.find({ categoryId: categoryId }).populate("categoryId");
     const activeBookings = await Booking.find({
-      category: categoryId,
+      categoryId: categoryId,
       isActive: true,
     });
     const bookedRoomNumbers = new Set(
@@ -143,7 +143,7 @@ exports.getRoomsByCategory = async (req, res) => {
 
     const roomsWithStatus = rooms.map((room) => {
       // Ensure safe access to category properties
-      const category = room.category || { name: 'Unknown' };
+      const category = room.categoryId || { name: 'Unknown' };
       
       return {
         _id: room._id,
@@ -151,7 +151,7 @@ exports.getRoomsByCategory = async (req, res) => {
         room_number: room.room_number,
         price: room.price,
         status: room.status,
-        category: category,
+        categoryId: category,
         isBooked: bookedRoomNumbers.has(parseInt(room.room_number)),
         canSelect:
           !bookedRoomNumbers.has(parseInt(room.room_number)) &&
@@ -227,14 +227,14 @@ exports.getAvailableRooms = async (req, res) => {
     // Step 3: Find rooms not in that list
     const availableRooms = await Room.find({
       room_number: { $nin: bookedRoomNumbers },
-    }).populate("category", "name");
+    }).populate("categoryId", "name");
 
     // Step 4: Group by category
     const grouped = {};
 
     availableRooms.forEach((room) => {
-      const catId = room.category?._id?.toString() || "uncategorized";
-      const catName = room.category?.name || "Uncategorized";
+      const catId = room.categoryId?._id?.toString() || "uncategorized";
+      const catName = room.categoryId?.name || "Uncategorized";
 
       if (!grouped[catId]) {
         grouped[catId] = {

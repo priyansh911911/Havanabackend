@@ -2,9 +2,7 @@ const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
   grcNo: { type: String, unique: true, required: true },  // Guest Registration Card No
-    reservationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Reservation', default: null },
-    
-    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
+  categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
 
   bookingDate: { type: Date, default: Date.now },
   numberOfRooms: { type: Number, default: 1 },
