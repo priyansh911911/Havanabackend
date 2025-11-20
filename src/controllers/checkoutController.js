@@ -83,7 +83,7 @@ exports.updatePaymentStatus = async (req, res) => {
     }
 
     // If payment is completed, update booking status and room availability
-    if (status === 'Completed' && checkout.bookingId) {
+    if ((status === 'Completed' || status === 'paid') && checkout.bookingId) {
       const booking = checkout.bookingId;
       
       // Update booking status to 'Checked Out'
