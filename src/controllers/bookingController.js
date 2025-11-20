@@ -51,7 +51,13 @@ exports.bookRoom = async (req, res) => {
       const bookedRoomNumbers = roomsToBook.map(room => room.room_number);
 
       // Calculate tax amounts using dynamic rates
-      const taxableAmount = extraDetails.rate || 0; // Input rate is the taxable amount
+      let taxableAmount = extraDetails.rate || 0; // Input rate is the taxable amount
+      
+      // Add extra bed charges if applicable
+      if (extraDetails.extraBed && extraDetails.extraBedCharge) {
+        taxableAmount += extraDetails.extraBedCharge;
+      }
+      
       const cgstAmount = taxableAmount * TAX_RATES.cgstRate;
       const sgstAmount = taxableAmount * TAX_RATES.sgstRate;
       const totalRate = taxableAmount + cgstAmount + sgstAmount; // Total with taxes
@@ -95,6 +101,8 @@ exports.bookRoom = async (req, res) => {
         planPackage: extraDetails.planPackage,
         noOfAdults: extraDetails.noOfAdults,
         noOfChildren: extraDetails.noOfChildren,
+        extraBed: extraDetails.extraBed || false,
+        extraBedCharge: extraDetails.extraBedCharge || 0,
         rate: totalRate, // Total amount including taxes
         taxableAmount: taxableAmount,
         cgstAmount: cgstAmount,
@@ -393,7 +401,7 @@ exports.updateBooking = async (req, res) => {
 
       'idProofType', 'idProofNumber', 'idProofImageUrl', 'idProofImageUrl2', 'photoUrl',
 
-      'roomNumber', 'planPackage', 'noOfAdults', 'noOfChildren', 'rate', 'taxableAmount', 'cgstAmount', 'sgstAmount', 'cgstRate', 'sgstRate', 'taxIncluded', 'serviceCharge',
+      'roomNumber', 'planPackage', 'noOfAdults', 'noOfChildren', 'extraBed', 'extraBedCharge', 'rate', 'taxableAmount', 'cgstAmount', 'sgstAmount', 'cgstRate', 'sgstRate', 'taxIncluded', 'serviceCharge',
 
       'arrivedFrom', 'destination', 'remark', 'businessSource', 'marketSegment', 'purposeOfVisit',
 

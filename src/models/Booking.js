@@ -46,6 +46,8 @@ const bookingSchema = new mongoose.Schema({
   planPackage: { type: String }, //cp map/ mp
   noOfAdults: { type: Number },
   noOfChildren: { type: Number },
+  extraBed: { type: Boolean, default: false },
+  extraBedCharge: { type: Number, default: 0 },
   rate: { type: Number },
   taxableAmount: { type: Number },
   cgstAmount: { type: Number },
