@@ -6,6 +6,7 @@ const { Server } = require("socket.io");
 require("dotenv").config();
 
 const authRoutes = require("./src/routes/authRoutes.js");
+const userRoutes = require("./src/routes/userRoutes.js");
 const categoryRoutes = require("./src/routes/category.js");
 const roomRoutes = require("./src/routes/roomRoutes.js");
 const bookingRoutes = require("./src/routes/booking.js");
@@ -94,6 +95,7 @@ app.use(async (req, res, next) => {
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/rooms", roomRoutes);
 app.use("/api/bookings", bookingRoutes);
