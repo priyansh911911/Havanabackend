@@ -14,4 +14,8 @@ router.put('/:id/payment', checkoutController.updatePaymentStatus);
 // Get invoice by checkout ID
 router.get('/:id/invoice', checkoutController.getInvoice);
 
+// Tax configuration routes
+router.get('/tax-config', checkoutController.getTaxConfig);
+router.put('/tax-config', checkoutController.updateTaxConfig);
+
 module.exports = router;
