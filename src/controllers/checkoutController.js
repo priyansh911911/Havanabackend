@@ -2,6 +2,8 @@ const Checkout = require('../models/Checkout');
 const Booking = require('../models/Booking');
 const mongoose = require('mongoose');
 const { TAX_CONFIG, calculateTaxableAmount, calculateCGST, calculateSGST } = require('../utils/taxConfig');
+const fs = require('fs');
+const path = require('path');
 
 // Create checkout record
 exports.createCheckout = async (req, res) => {
@@ -190,6 +192,52 @@ exports.getInvoice = async (req, res) => {
     res.status(200).json({ success: true, invoice });
   } catch (error) {
     console.error('GetInvoice Error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get tax configuration
+exports.getTaxConfig = async (req, res) => {
+  try {
+    const taxConfig = {
+      cgst: TAX_CONFIG.CGST_RATE * 100,
+      sgst: TAX_CONFIG.SGST_RATE * 100,
+      total: TAX_CONFIG.TOTAL_TAX_RATE * 100
+    };
+    res.status(200).json({ success: true, taxConfig });
+  } catch (error) {
+    console.error('GetTaxConfig Error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Update tax configuration
+exports.updateTaxConfig = async (req, res) => {
+  try {
+    if (!req.body) {
+      return res.status(400).json({ message: 'Request body is required' });
+    }
+    
+    const { cgstRate, sgstRate } = req.body;
+    
+    if (cgstRate !== undefined) TAX_CONFIG.CGST_RATE = cgstRate / 100;
+    if (sgstRate !== undefined) TAX_CONFIG.SGST_RATE = sgstRate / 100;
+    
+    TAX_CONFIG.TOTAL_TAX_RATE = TAX_CONFIG.CGST_RATE + TAX_CONFIG.SGST_RATE;
+    
+    const updatedConfig = {
+      cgst: TAX_CONFIG.CGST_RATE * 100,
+      sgst: TAX_CONFIG.SGST_RATE * 100,
+      total: TAX_CONFIG.TOTAL_TAX_RATE * 100
+    };
+    
+    res.status(200).json({ 
+      success: true, 
+      message: 'Tax configuration updated successfully',
+      taxConfig: updatedConfig 
+    });
+  } catch (error) {
+    console.error('UpdateTaxConfig Error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
