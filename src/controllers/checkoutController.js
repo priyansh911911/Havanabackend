@@ -154,8 +154,8 @@ exports.getInvoice = async (req, res) => {
         grcNo: booking?.grcNo || 'N/A',
         roomNo: booking?.roomNumber || 'N/A',
         roomType: booking?.categoryId?.name || 'DELUXE ROOM',
-        pax: 2,
-        adult: 2,
+        pax: (booking?.noOfAdults || 0) + (booking?.noOfChildren || 0),
+        adult: booking?.noOfAdults || 2,
         checkInDate: booking?.checkInDate ? new Date(booking.checkInDate).toLocaleDateString('en-GB') : 'N/A',
         checkOutDate: booking?.checkOutDate ? new Date(booking.checkOutDate).toLocaleDateString('en-GB') : 'N/A'
       },
@@ -172,8 +172,8 @@ exports.getInvoice = async (req, res) => {
         {
           date: booking?.checkInDate ? new Date(booking.checkInDate).toLocaleDateString('en-GB') : currentDate.toLocaleDateString('en-GB'),
           particulars: `Room Rent ${booking?.categoryId?.name || 'DELUXE ROOM'} (Room: ${booking?.roomNumber || 'N/A'})`,
-          pax: 2,
-          declaredRate: checkout.bookingCharges,
+          pax: booking?.noOfAdults || 2,
+          declaredRate: booking?.rate || checkout.bookingCharges,
           hsn: 996311,
           rate: TAX_CONFIG.DISPLAY_RATE,
           cgstRate: cgstAmount,
@@ -187,14 +187,14 @@ exports.getInvoice = async (req, res) => {
           taxableAmount: taxableAmount,
           cgst: cgstAmount,
           sgst: sgstAmount,
-          amount: checkout.bookingCharges
+          amount: booking?.rate || checkout.bookingCharges
         }
       ],
       payment: {
         taxableAmount: taxableAmount,
         cgst: cgstAmount,
         sgst: sgstAmount,
-        total: checkout.totalAmount
+        total: booking?.rate || checkout.totalAmount
       },
       otherCharges: []
     };

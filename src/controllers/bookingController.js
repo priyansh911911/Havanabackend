@@ -62,6 +62,40 @@ exports.bookRoom = async (req, res) => {
       const sgstAmount = taxableAmount * TAX_RATES.sgstRate;
       const totalRate = taxableAmount + cgstAmount + sgstAmount; // Total with taxes
 
+      // Process room guest details
+      let roomGuestDetails = [];
+      if (extraDetails.roomGuestDetails && Array.isArray(extraDetails.roomGuestDetails)) {
+        roomGuestDetails = extraDetails.roomGuestDetails;
+      } else {
+        // Fallback: create default guest details for each room
+        roomGuestDetails = bookedRoomNumbers.map(roomNum => ({
+          roomNumber: roomNum,
+          adults: extraDetails.noOfAdults || 1,
+          children: extraDetails.noOfChildren || 0
+        }));
+      }
+
+      // Process room rates from the roomRates array sent from frontend
+      let roomRates = [];
+      if (extraDetails.roomRates && Array.isArray(extraDetails.roomRates)) {
+        roomRates = extraDetails.roomRates;
+      } else {
+        // Fallback: create from room numbers and rate data
+        if (bookedRoomNumbers && bookedRoomNumbers.length > 0) {
+          const totalRate = extraDetails.rate || 0;
+          const ratePerRoom = totalRate / bookedRoomNumbers.length;
+          
+          roomRates = bookedRoomNumbers.map(roomNumber => ({
+            roomNumber: roomNumber,
+            customRate: ratePerRoom
+          }));
+        }
+      }
+
+      // Calculate total adults and children across all rooms
+      const totalAdults = roomGuestDetails.reduce((sum, room) => sum + (room.adults || 1), 0);
+      const totalChildren = roomGuestDetails.reduce((sum, room) => sum + (room.children || 0), 0);
+
       // Create single booking document for all rooms
       const booking = new Booking({
         grcNo,
@@ -99,8 +133,10 @@ exports.bookRoom = async (req, res) => {
 
         roomNumber: bookedRoomNumbers.join(','), // Store all room numbers as comma-separated string
         planPackage: extraDetails.planPackage,
-        noOfAdults: extraDetails.noOfAdults,
-        noOfChildren: extraDetails.noOfChildren,
+        noOfAdults: totalAdults,
+        noOfChildren: totalChildren,
+        roomGuestDetails: roomGuestDetails,
+        roomRates: roomRates,
         extraBed: extraDetails.extraBed || false,
         extraBedCharge: extraDetails.extraBedCharge || 0,
         rate: totalRate, // Total amount including taxes
@@ -401,7 +437,7 @@ exports.updateBooking = async (req, res) => {
 
       'idProofType', 'idProofNumber', 'idProofImageUrl', 'idProofImageUrl2', 'photoUrl',
 
-      'roomNumber', 'planPackage', 'noOfAdults', 'noOfChildren', 'extraBed', 'extraBedCharge', 'rate', 'taxableAmount', 'cgstAmount', 'sgstAmount', 'cgstRate', 'sgstRate', 'taxIncluded', 'serviceCharge',
+      'roomNumber', 'planPackage', 'noOfAdults', 'noOfChildren', 'roomGuestDetails', 'roomRates', 'extraBed', 'extraBedCharge', 'rate', 'taxableAmount', 'cgstAmount', 'sgstAmount', 'cgstRate', 'sgstRate', 'taxIncluded', 'serviceCharge',
 
       'arrivedFrom', 'destination', 'remark', 'businessSource', 'marketSegment', 'purposeOfVisit',
 
