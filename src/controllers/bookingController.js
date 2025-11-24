@@ -2,6 +2,7 @@ const Booking = require("../models/Booking.js");
 const Category = require("../models/Category.js");
 const Room = require("../models/Room.js");
 const mongoose = require('mongoose');
+const cloudinary = require('../utils/cloudinary');
 
 // Dynamic tax rates - can be modified as needed
 const TAX_RATES = {
@@ -18,6 +19,19 @@ const generateGRC = async () => {
     exists = await Booking.findOne({ grcNo });
   }
   return grcNo;
+};
+
+// Upload base64 image to Cloudinary
+const uploadBase64ToCloudinary = async (base64String) => {
+  try {
+    const result = await cloudinary.uploader.upload(base64String, {
+      folder: 'havan-booking-media',
+      transformation: [{ width: 800, height: 800, crop: 'limit' }]
+    });
+    return result.secure_url;
+  } catch (error) {
+    throw new Error(`Image upload failed: ${error.message}`);
+  }
 };
 
 // Book a room for a category (single or multiple)
@@ -162,6 +176,31 @@ exports.bookRoom = async (req, res) => {
       selectedRooms,
       ...extraDetails
     } = req.body;
+
+    // Handle both form-data and JSON base64 images
+    if (req.files) {
+      // Form-data uploads
+      if (req.files.idProofImageUrl && req.files.idProofImageUrl[0]) {
+        extraDetails.idProofImageUrl = req.files.idProofImageUrl[0].path;
+      }
+      if (req.files.idProofImageUrl2 && req.files.idProofImageUrl2[0]) {
+        extraDetails.idProofImageUrl2 = req.files.idProofImageUrl2[0].path;
+      }
+      if (req.files.photoUrl && req.files.photoUrl[0]) {
+        extraDetails.photoUrl = req.files.photoUrl[0].path;
+      }
+    } else {
+      // JSON base64 uploads
+      if (extraDetails.idProofImageUrl && extraDetails.idProofImageUrl.startsWith('data:')) {
+        extraDetails.idProofImageUrl = await uploadBase64ToCloudinary(extraDetails.idProofImageUrl);
+      }
+      if (extraDetails.idProofImageUrl2 && extraDetails.idProofImageUrl2.startsWith('data:')) {
+        extraDetails.idProofImageUrl2 = await uploadBase64ToCloudinary(extraDetails.idProofImageUrl2);
+      }
+      if (extraDetails.photoUrl && extraDetails.photoUrl.startsWith('data:')) {
+        extraDetails.photoUrl = await uploadBase64ToCloudinary(extraDetails.photoUrl);
+      }
+    }
 
     if (!categoryId) return res.status(400).json({ error: 'categoryId is required' });
 

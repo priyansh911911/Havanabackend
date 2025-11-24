@@ -2,8 +2,13 @@ const express = require("express");
 const router = express.Router();
 const bookingController = require("../controllers/bookingController");
 const { auth, authorize } = require("../middleware/auth");
+const upload = require("../middleware/upload");
 
-router.post("/book", auth, bookingController.bookRoom);
+router.post("/book", auth, upload.fields([
+    { name: "idProofImageUrl", maxCount: 1 },
+    { name: "idProofImageUrl2", maxCount: 1 },
+    { name: "photoUrl", maxCount: 1 }
+  ]), bookingController.bookRoom);
 router.get("/all", auth, bookingController.getBookings);
 router.get("/category/:categoryId", auth, bookingController.getBookingsByCategory);
 router.get("/grc/:grcNo", auth, bookingController.getBookingByGRC);
