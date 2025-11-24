@@ -288,22 +288,7 @@ exports.getBookings = async (req, res) => {
         bookingObj.categoryId = { name: 'Unknown' };
       }
       
-      // Ensure roomRates has extraBedStartDate for backward compatibility
-      if (bookingObj.roomRates && Array.isArray(bookingObj.roomRates)) {
-        bookingObj.roomRates = bookingObj.roomRates.map(rate => ({
-          ...rate,
-          extraBedStartDate: rate.extraBedStartDate || (rate.extraBed ? bookingObj.checkInDate : null)
-        }));
-      } else if (bookingObj.roomNumber && bookingObj.extraBed) {
-        // Create roomRates for legacy bookings
-        const roomNumbers = bookingObj.roomNumber.split(',').map(r => r.trim());
-        bookingObj.roomRates = roomNumbers.map(roomNumber => ({
-          roomNumber: roomNumber,
-          customRate: bookingObj.rate ? (bookingObj.rate / roomNumbers.length / (bookingObj.days || 1)) : 0,
-          extraBed: bookingObj.extraBedRooms ? bookingObj.extraBedRooms.includes(roomNumber) : bookingObj.extraBed,
-          extraBedStartDate: bookingObj.extraBed ? bookingObj.checkInDate : null
-        }));
-      }
+
       
       // Use extraBedRooms from database if available, otherwise calculate it
       if (bookingObj.extraBedRooms && Array.isArray(bookingObj.extraBedRooms)) {
