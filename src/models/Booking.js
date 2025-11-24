@@ -35,8 +35,7 @@ const bookingSchema = new mongoose.Schema({
 
   idProofType: {
     type: String,
-    enum: ['Aadhaar', 'PAN', 'Voter ID', 'Passport', 'Driving License', 'Other'],
-    required: true
+    enum: ['Aadhaar', 'PAN', 'Voter ID', 'Passport', 'Driving License', 'Other']
   },  idProofNumber: { type: String },
   idProofImageUrl: { type: String },
   idProofImageUrl2: { type: String },

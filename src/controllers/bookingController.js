@@ -92,7 +92,11 @@ exports.bookRoom = async (req, res) => {
       // Process room rates from the roomRates array sent from frontend
       let roomRates = [];
       if (extraDetails.roomRates && Array.isArray(extraDetails.roomRates)) {
-        roomRates = extraDetails.roomRates;
+        roomRates = extraDetails.roomRates.map(rate => ({
+          roomNumber: rate.roomNumber,
+          customRate: rate.customRate || 0,
+          extraBed: Boolean(rate.extraBed)
+        }));
       } else {
         // Fallback: create from room numbers and rate data
         if (bookedRoomNumbers && bookedRoomNumbers.length > 0) {
@@ -107,21 +111,6 @@ exports.bookRoom = async (req, res) => {
               extraBed: roomData?.extra_bed || false
             };
           });
-        }
-        
-        // If roomRates from frontend has extra bed info, use that instead
-        if (extraDetails.roomRates && Array.isArray(extraDetails.roomRates)) {
-          roomRates = extraDetails.roomRates.map(rate => ({
-            roomNumber: rate.roomNumber,
-            customRate: rate.customRate || 0,
-            extraBed: Boolean(rate.extraBed)
-          }));
-        }
-        
-        // Set booking level extraBed based on room-specific data
-        const hasAnyExtraBed = roomRates.some(room => room.extraBed === true);
-        if (hasAnyExtraBed) {
-          extraDetails.extraBed = true;
         }
       }
 
@@ -170,9 +159,9 @@ exports.bookRoom = async (req, res) => {
         noOfChildren: totalChildren,
         roomGuestDetails: roomGuestDetails,
         roomRates: roomRates,
-        extraBed: roomRates.some(room => room.extraBed === true),
+        extraBed: extraDetails.extraBed || roomRates.some(room => room.extraBed === true),
         extraBedCharge: extraDetails.extraBedCharge || 0,
-        extraBedRooms: roomRates.filter(room => room.extraBed === true).map(room => room.roomNumber),
+        extraBedRooms: extraDetails.extraBedRooms || roomRates.filter(room => room.extraBed === true).map(room => room.roomNumber),
         rate: totalRate, // Total amount including taxes
         taxableAmount: taxableAmount,
         cgstAmount: cgstAmount,
@@ -573,7 +562,7 @@ exports.updateBooking = async (req, res) => {
       }
     }
 
-    await booking.save();
+    await booking.save({ validateBeforeSave: false });
 
     res.json({
       success: true,
