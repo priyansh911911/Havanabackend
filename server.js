@@ -15,6 +15,8 @@ const checkoutRoutes = require("./src/routes/checkoutRoutes.js");
 const banquetMenuRoutes = require("./src/routes/banquetMenuRoutes.js");
 const banquetBookingRoutes = require("./src/routes/banquetBookingRoutes.js");
 const banquetCategoryRoutes = require("./src/routes/banquetCategoryRoutes.js");
+const restaurantCategoryRoutes = require("./src/routes/restaurantCategoryRoutes.js");
+const restaurantOrderRoutes = require("./src/routes/restaurantOrderRoutes.js");
 
 const planLimitRoutes = require("./src/routes/planLimitRoutes.js");
 const roomInventoryChecklistRoutes = require("./src/routes/roomInventoryChecklistRoutes.js");
@@ -118,6 +120,8 @@ app.use("/api/checkout", checkoutRoutes);
 app.use("/api/banquet-menus", banquetMenuRoutes);
 app.use("/api/banquet-bookings", banquetBookingRoutes);
 app.use("/api/banquet-categories", banquetCategoryRoutes);
+app.use("/api/restaurant-categories", restaurantCategoryRoutes);
+app.use("/api/restaurant-orders", restaurantOrderRoutes);
 app.use("/api/plan-limits", planLimitRoutes);
 app.use("/api/room-inventory-checklists", roomInventoryChecklistRoutes);
 app.use("/api/menu-items", menuItemRoutes);
