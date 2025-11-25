@@ -11,7 +11,7 @@ const restaurantOrderSchema = new mongoose.Schema({
   },
   tableNo: {
     type: String,
-    required: true
+    required: false
   },
   items: [{
     itemId: {
