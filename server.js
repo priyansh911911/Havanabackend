@@ -81,22 +81,29 @@ let isConnected = false;
 app.use(async (req, res, next) => {
   try {
     if (!isConnected) {
+      console.log("Attempting to connect to MongoDB...");
+      console.log("MongoDB URI:", process.env.MONGO_URI ? "URI found" : "URI missing");
+      
       await mongoose.connect(process.env.MONGO_URI, {
-        serverSelectionTimeoutMS: 5000,
-        socketTimeoutMS: 10000,
-        bufferCommands: false,
-        bufferMaxEntries: 0,
+        serverSelectionTimeoutMS: 10000,
+        socketTimeoutMS: 15000,
+        connectTimeoutMS: 10000,
         maxPoolSize: 10,
         minPoolSize: 1,
-        maxIdleTimeMS: 30000,
+        maxIdleTimeMS: 30000
       });
       isConnected = true;
-      console.log("MongoDB connected successfully");
+      console.log("MongoDB connected successfully to:", mongoose.connection.name);
     }
     next();
   } catch (error) {
-    console.error("Database connection failed:", error);
-    res.status(500).json({ error: "Database connection failed" });
+    console.error("Database connection failed:", error.message);
+    console.error("Full error:", error);
+    isConnected = false;
+    res.status(500).json({ 
+      error: "Database connection failed",
+      details: error.message
+    });
   }
 });
 
@@ -123,7 +130,33 @@ app.get("/health", (req, res) => {
   res.json({
     status: "ok",
     dbConnected: isConnected,
+    mongoUri: process.env.MONGO_URI ? "Present" : "Missing",
+    connectionState: mongoose.connection.readyState
   });
+});
+
+// Database test endpoint
+app.get("/test-db", async (req, res) => {
+  try {
+    if (!process.env.MONGO_URI) {
+      return res.status(500).json({ error: "MONGO_URI not found in environment" });
+    }
+    
+    const testConnection = await mongoose.connection.db.admin().ping();
+    res.json({
+      success: true,
+      message: "Database connection successful",
+      dbName: mongoose.connection.name,
+      readyState: mongoose.connection.readyState,
+      ping: testConnection
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: "Database test failed",
+      message: error.message,
+      readyState: mongoose.connection.readyState
+    });
+  }
 });
 
 app.get("/", (req, res) => {

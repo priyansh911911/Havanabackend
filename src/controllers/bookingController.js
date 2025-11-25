@@ -290,12 +290,11 @@ exports.getBookings = async (req, res) => {
 
     // Map bookings to ensure safe access to category properties and add room-specific extra bed info
     const safeBookings = bookings.map(booking => {
-      const bookingObj = booking.toObject();
+      // Handle both lean objects and Mongoose documents
+      const bookingObj = booking.toObject ? booking.toObject() : booking;
       if (!bookingObj.categoryId) {
         bookingObj.categoryId = { name: 'Unknown' };
       }
-      
-
       
       // Use extraBedRooms from database if available, otherwise calculate it
       if (bookingObj.extraBedRooms && Array.isArray(bookingObj.extraBedRooms)) {
@@ -666,7 +665,7 @@ exports.getBookingByGRC = async (req, res) => {
       return res.status(404).json({ error: 'Booking not found with given GRC' });
     }
 
-    const result = booking.toObject();
+    const result = booking.toObject ? booking.toObject() : booking;
     if (!result.categoryId) {
       result.categoryId = { name: 'Unknown' };
     }
@@ -786,7 +785,7 @@ exports.getBookingById = async (req, res) => {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    const result = booking.toObject();
+    const result = booking.toObject ? booking.toObject() : booking;
     if (!result.categoryId) {
       result.categoryId = { name: 'Unknown' };
     }
@@ -810,7 +809,7 @@ exports.getBookingHistory = async (req, res) => {
       bookings.map(async (booking) => {
         const invoices = await Invoice.find({ bookingId: booking._id });
         return {
-          ...booking.toObject(),
+          ...(booking.toObject ? booking.toObject() : booking),
           invoices
         };
       })
