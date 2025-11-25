@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const restaurantOrderSchema = new mongoose.Schema({
   staffName: {
     type: String,
-    required: true
+    required: false,
   },
   phoneNumber: {
     type: String,
@@ -20,16 +20,16 @@ const restaurantOrderSchema = new mongoose.Schema({
     },
     itemName: {
       type: String,
-      required: true
+      required: false
     },
     quantity: {
       type: Number,
-      required: true,
+      required: false,
       min: 1
     },
     price: {
       type: Number,
-      required: true,
+      required: false,
       min: 0
     }
   }],
