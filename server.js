@@ -17,6 +17,7 @@ const banquetBookingRoutes = require("./src/routes/banquetBookingRoutes.js");
 const banquetCategoryRoutes = require("./src/routes/banquetCategoryRoutes.js");
 const restaurantCategoryRoutes = require("./src/routes/restaurantCategoryRoutes.js");
 const restaurantOrderRoutes = require("./src/routes/restaurantOrderRoutes.js");
+const kotRoutes = require("./src/routes/kotRoutes.js");
 
 const planLimitRoutes = require("./src/routes/planLimitRoutes.js");
 const roomInventoryChecklistRoutes = require("./src/routes/roomInventoryChecklistRoutes.js");
@@ -122,6 +123,7 @@ app.use("/api/banquet-bookings", banquetBookingRoutes);
 app.use("/api/banquet-categories", banquetCategoryRoutes);
 app.use("/api/restaurant-categories", restaurantCategoryRoutes);
 app.use("/api/restaurant-orders", restaurantOrderRoutes);
+app.use("/api/kot", kotRoutes);
 app.use("/api/plan-limits", planLimitRoutes);
 app.use("/api/room-inventory-checklists", roomInventoryChecklistRoutes);
 app.use("/api/menu-items", menuItemRoutes);

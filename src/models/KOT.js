@@ -34,6 +34,21 @@ const kotSchema = new mongoose.Schema({
       default: ''
     }
   }],
+  itemStatuses: [{
+    itemIndex: {
+      type: Number,
+      required: true
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'preparing', 'ready', 'served', 'delivered'],
+      default: 'pending'
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   status: {
     type: String,
     enum: ['pending', 'preparing', 'ready', 'served'],

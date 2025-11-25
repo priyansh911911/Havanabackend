@@ -30,3 +30,25 @@ exports.getAllOrders = async (req, res) => {
     }
   }
 };
+
+// Update order status
+exports.updateOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    const order = await RestaurantOrder.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
+    
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
