@@ -7,7 +7,6 @@ const {
   getFormattedLimits,
   initializeDefaults
 } = require("../controllers/planLimitController");
-
 router.get("/get", getAllPlanLimits);
 router.get("/formatted", getFormattedLimits);
 router.get("/:ratePlan/:foodType", getPlanLimit);
