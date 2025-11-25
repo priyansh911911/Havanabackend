@@ -15,10 +15,17 @@ exports.createCategory = async (req, res) => {
 // Get all categories
 exports.getCategories = async (req, res) => {
   try {
-    const categories = await Category.find();
+    const categories = await Category.find()
+      .maxTimeMS(5000)
+      .lean()
+      .exec();
     res.json(categories);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error.name === 'MongooseError' && error.message.includes('buffering timed out')) {
+      res.status(408).json({ error: 'Database query timeout. Please try again.' });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
   }
 };
 

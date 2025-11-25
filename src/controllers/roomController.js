@@ -66,20 +66,27 @@ exports.createRoom = async (req, res) => {
 // Get all rooms
 exports.getRooms = async (req, res) => {
   try {
-    const rooms = await Room.find().populate("categoryId");
+    const rooms = await Room.find()
+      .populate("categoryId")
+      .maxTimeMS(5000)
+      .lean()
+      .exec();
     
     // Map rooms to ensure safe access to category properties
     const safeRooms = rooms.map(room => {
-      const roomObj = room.toObject();
-      if (!roomObj.categoryId) {
-        roomObj.categoryId = { name: 'Unknown' };
+      if (!room.categoryId) {
+        room.categoryId = { name: 'Unknown' };
       }
-      return roomObj;
+      return room;
     });
     
     res.json(safeRooms);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error.name === 'MongooseError' && error.message.includes('buffering timed out')) {
+      res.status(408).json({ error: 'Database query timeout. Please try again.' });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
   }
 };
 
@@ -221,7 +228,10 @@ exports.getAvailableRooms = async (req, res) => {
       status: { $in: ['Booked', 'Checked In'] },
       checkInDate: { $lt: checkOut },
       checkOutDate: { $gt: checkIn }
-    });
+    })
+    .maxTimeMS(5000)
+    .lean()
+    .exec();
     
 
 
@@ -237,7 +247,11 @@ exports.getAvailableRooms = async (req, res) => {
     // Step 3: Find rooms not in that list (ignore room status for future bookings)
     const availableRooms = await Room.find({
       room_number: { $nin: bookedRoomNumbers }
-    }).populate("categoryId", "name");
+    })
+    .populate("categoryId", "name")
+    .maxTimeMS(5000)
+    .lean()
+    .exec();
 
     // Step 4: Group by category
     const grouped = {};

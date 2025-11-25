@@ -276,10 +276,17 @@ exports.bookRoom = async (req, res) => {
 exports.getBookings = async (req, res) => {
   try {
     const filter = req.query.all === 'true' ? {} : { isActive: true };
-    const bookings = await Booking.find(filter).populate('categoryId');
+    const bookings = await Booking.find(filter)
+      .populate('categoryId')
+      .maxTimeMS(5000)
+      .lean()
+      .exec();
     
     // Get all rooms to check extra bed status
-    const rooms = await Room.find({});
+    const rooms = await Room.find({})
+      .maxTimeMS(5000)
+      .lean()
+      .exec();
 
     // Map bookings to ensure safe access to category properties and add room-specific extra bed info
     const safeBookings = bookings.map(booking => {
@@ -324,7 +331,11 @@ exports.getBookings = async (req, res) => {
 
     res.json(safeBookings);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error.name === 'MongooseError' && error.message.includes('buffering timed out')) {
+      res.status(408).json({ error: 'Database query timeout. Please try again.' });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
   }
 };
 
