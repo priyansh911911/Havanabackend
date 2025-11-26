@@ -142,7 +142,7 @@ exports.getInvoice = async (req, res) => {
     const checkout = await Checkout.findById(id)
       .populate({
         path: 'bookingId',
-        select: 'grcNo name roomNumber checkInDate checkOutDate mobileNo address city rate cgstRate sgstRate noOfAdults noOfChildren',
+        select: 'grcNo name roomNumber checkInDate checkOutDate mobileNo address city rate taxableAmount cgstAmount sgstAmount cgstRate sgstRate noOfAdults noOfChildren extraBed extraBedCharge extraBedRooms roomRates days',
         populate: {
           path: 'categoryId',
           select: 'name'
@@ -161,9 +161,10 @@ exports.getInvoice = async (req, res) => {
     const bookingCgstRate = (booking?.cgstRate || 0.025); // Default to 2.5% if not set
     const bookingSgstRate = (booking?.sgstRate || 0.025); // Default to 2.5% if not set
     
-    const taxableAmount = checkout.bookingCharges;
-    const cgstAmount = taxableAmount * bookingCgstRate;
-    const sgstAmount = taxableAmount * bookingSgstRate;
+    // Use booking's taxableAmount which includes extra bed charges
+    const taxableAmount = booking?.taxableAmount || checkout.bookingCharges;
+    const cgstAmount = booking?.cgstAmount || (taxableAmount * bookingCgstRate);
+    const sgstAmount = booking?.sgstAmount || (taxableAmount * bookingSgstRate);
     
     const invoice = {
       invoiceDetails: {
@@ -186,26 +187,71 @@ exports.getInvoice = async (req, res) => {
         mobileNo: booking?.mobileNo || 'N/A',
         nationality: 'Indian'
       },
-      items: [
-        {
+      items: (() => {
+        const items = [];
+        
+        // Calculate room rent without extra bed charges
+        const roomRentAmount = (booking?.roomRates || []).reduce((sum, room) => {
+          return sum + (room.customRate || 0);
+        }, 0) * (booking?.days || 1);
+        
+        // Add room rent item
+        items.push({
           date: booking?.checkInDate ? new Date(booking.checkInDate).toLocaleDateString('en-GB') : currentDate.toLocaleDateString('en-GB'),
           particulars: `Room Rent ${booking?.categoryId?.name || 'DELUXE ROOM'} (Room: ${booking?.roomNumber || 'N/A'})`,
           pax: booking?.noOfAdults || 2,
-          declaredRate: booking?.rate || checkout.bookingCharges,
+          declaredRate: roomRentAmount,
           hsn: 996311,
           rate: (bookingCgstRate + bookingSgstRate) * 100,
-          cgstRate: cgstAmount,
-          sgstRate: sgstAmount,
-          amount: checkout.bookingCharges
+          cgstRate: roomRentAmount * bookingCgstRate,
+          sgstRate: roomRentAmount * bookingSgstRate,
+          amount: roomRentAmount
+        });
+        
+        // Add individual extra bed charges for each room
+        if (booking?.extraBedRooms && booking.extraBedRooms.length > 0) {
+          booking.extraBedRooms.forEach(roomNumber => {
+            const roomRate = booking.roomRates?.find(r => r.roomNumber == roomNumber);
+            let extraBedDays = booking?.days || 1;
+            
+            // Calculate actual extra bed days if start date is specified
+            if (roomRate?.extraBedStartDate && booking?.checkOutDate) {
+              const startDate = new Date(roomRate.extraBedStartDate);
+              const endDate = new Date(booking.checkOutDate);
+              if (startDate < endDate) {
+                extraBedDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+              } else {
+                extraBedDays = 0;
+              }
+            }
+            
+            const extraBedAmount = (booking?.extraBedCharge || 0) * extraBedDays;
+            
+            if (extraBedAmount > 0) {
+              items.push({
+                date: booking?.checkInDate ? new Date(booking.checkInDate).toLocaleDateString('en-GB') : currentDate.toLocaleDateString('en-GB'),
+                particulars: `Extra Bed Charge - Room ${roomNumber} (${extraBedDays} days × ₹${booking?.extraBedCharge || 0})`,
+                pax: 1,
+                declaredRate: extraBedAmount,
+                hsn: 996311,
+                rate: (bookingCgstRate + bookingSgstRate) * 100,
+                cgstRate: extraBedAmount * bookingCgstRate,
+                sgstRate: extraBedAmount * bookingSgstRate,
+                amount: extraBedAmount
+              });
+            }
+          });
         }
-      ],
+        
+        return items;
+      })(),
       taxes: [
         {
           taxRate: (bookingCgstRate + bookingSgstRate) * 100,
           taxableAmount: taxableAmount,
           cgst: cgstAmount,
           sgst: sgstAmount,
-          amount: booking?.rate || checkout.bookingCharges
+          amount: taxableAmount
         }
       ],
       payment: {
