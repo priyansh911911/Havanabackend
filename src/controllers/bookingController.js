@@ -1083,14 +1083,9 @@ exports.getBookingCharges = async (req, res) => {
       restaurantOrderQueries.push({ tableNo: { $in: roomNumbers } });
     }
     
-    console.log('Restaurant order queries:', JSON.stringify(restaurantOrderQueries, null, 2));
-    
     const restaurantOrders = await RestaurantOrder.find({
       $or: restaurantOrderQueries
     }).sort({ createdAt: -1 });
-    
-    console.log('Found restaurant orders:', restaurantOrders.length);
-    console.log('Restaurant orders:', JSON.stringify(restaurantOrders, null, 2));
     
     // Calculate totals
     const totalServiceCharges = roomServices.reduce((sum, service) => sum + (service.totalAmount || 0), 0);
