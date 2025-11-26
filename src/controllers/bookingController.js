@@ -91,8 +91,12 @@ exports.bookRoom = async (req, res) => {
         taxableAmount += extraDetails.extraBedCharge;
       }
       
-      const cgstAmount = taxableAmount * TAX_RATES.cgstRate;
-      const sgstAmount = taxableAmount * TAX_RATES.sgstRate;
+      // Use custom GST rates from form data, fallback to TAX_RATES if not provided
+      const cgstRate = extraDetails.cgstRate !== undefined ? extraDetails.cgstRate / 100 : TAX_RATES.cgstRate;
+      const sgstRate = extraDetails.sgstRate !== undefined ? extraDetails.sgstRate / 100 : TAX_RATES.sgstRate;
+      
+      const cgstAmount = taxableAmount * cgstRate;
+      const sgstAmount = taxableAmount * sgstRate;
       const totalRate = taxableAmount + cgstAmount + sgstAmount; // Total with taxes
 
       // Process room guest details
@@ -187,8 +191,8 @@ exports.bookRoom = async (req, res) => {
         taxableAmount: taxableAmount,
         cgstAmount: cgstAmount,
         sgstAmount: sgstAmount,
-        cgstRate: TAX_RATES.cgstRate,
-        sgstRate: TAX_RATES.sgstRate,
+        cgstRate: cgstRate,
+        sgstRate: sgstRate,
         taxIncluded: extraDetails.taxIncluded,
         serviceCharge: extraDetails.serviceCharge,
 
@@ -560,7 +564,12 @@ exports.updateBooking = async (req, res) => {
         if (field === 'categoryId' && (!updates[field] || updates[field] === '')) {
           return;
         }
-        booking[field] = updates[field];
+        // Handle GST rates conversion from percentage to decimal
+        if (field === 'cgstRate' || field === 'sgstRate') {
+          booking[field] = updates[field] / 100;
+        } else {
+          booking[field] = updates[field];
+        }
       }
     });
 
