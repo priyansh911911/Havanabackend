@@ -85,6 +85,18 @@ const bookingSchema = new mongoose.Schema({
     default: 'Pending'
   },
 
+  // Multiple Advance Payments
+  advancePayments: [{
+    amount: { type: Number, required: true },
+    paymentMode: { type: String, required: true },
+    paymentDate: { type: Date, required: true },
+    reference: { type: String },
+    notes: { type: String },
+    createdAt: { type: Date, default: Date.now }
+  }],
+  totalAdvanceAmount: { type: Number, default: 0 },
+  balanceAmount: { type: Number, default: 0 },
+
   bookingRefNo: { type: String },
   
   mgmtBlock: { type: String, enum: ['Yes', 'No'], default: 'No' },
