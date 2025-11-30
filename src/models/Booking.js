@@ -138,6 +138,11 @@ const bookingSchema = new mongoose.Schema({
       approvedOn: Date
     }
   ],
+
+  // 🔹 Soft Delete
+  deleted: { type: Boolean, default: false },
+  deletedAt: { type: Date },
+  deletedBy: { type: String },
 }, { timestamps: true });
 
 module.exports = mongoose.models.Booking || mongoose.model('Booking', bookingSchema);

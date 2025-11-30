@@ -286,7 +286,7 @@ exports.bookRoom = async (req, res) => {
 // 🔹 Get all bookings
 exports.getBookings = async (req, res) => {
   try {
-    const filter = req.query.all === 'true' ? {} : { isActive: true };
+    const filter = req.query.all === 'true' ? { deleted: { $ne: true } } : { isActive: true, deleted: { $ne: true } };
     const bookings = await Booking.find(filter)
       .populate('categoryId')
       .maxTimeMS(5000)
@@ -482,14 +482,19 @@ exports.deleteBooking = async (req, res) => {
   }
 };
 
-// 🔹 PERMANENT DELETE
+// 🔹 SOFT DELETE
 exports.permanentlyDeleteBooking = async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const deleted = await Booking.findByIdAndDelete(bookingId);
-    if (!deleted) return res.status(404).json({ error: 'Booking not found' });
+    const booking = await Booking.findById(bookingId);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
-    res.json({ success: true, message: 'Booking permanently deleted' });
+    booking.deleted = true;
+    booking.deletedAt = new Date();
+    booking.deletedBy = req.user?.username || 'System';
+    await booking.save();
+
+    res.json({ success: true, message: 'Booking deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
