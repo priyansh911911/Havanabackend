@@ -98,9 +98,9 @@ exports.bookRoom = async (req, res) => {
         taxableAmount += extraDetails.extraBedCharge;
       }
       
-      // Use custom GST rates from form data, fallback to TAX_RATES if not provided
-      const cgstRate = extraDetails.cgstRate !== undefined ? extraDetails.cgstRate / 100 : TAX_RATES.cgstRate;
-      const sgstRate = extraDetails.sgstRate !== undefined ? extraDetails.sgstRate / 100 : TAX_RATES.sgstRate;
+      // Use custom GST rates from form data, fallback to TAX_RATES if not provided or zero
+      const cgstRate = (extraDetails.cgstRate !== undefined && extraDetails.cgstRate > 0) ? extraDetails.cgstRate / 100 : TAX_RATES.cgstRate;
+      const sgstRate = (extraDetails.sgstRate !== undefined && extraDetails.sgstRate > 0) ? extraDetails.sgstRate / 100 : TAX_RATES.sgstRate;
       
       const cgstAmount = taxableAmount * cgstRate;
       const sgstAmount = taxableAmount * sgstRate;
@@ -149,6 +149,11 @@ exports.bookRoom = async (req, res) => {
       // Calculate total adults and children across all rooms
       const totalAdults = roomGuestDetails.reduce((sum, room) => sum + (room.adults || 1), 0);
       const totalChildren = roomGuestDetails.reduce((sum, room) => sum + (room.children || 0), 0);
+
+      // Calculate total advance amount from multiple payments
+      const advancePayments = extraDetails.advancePayments || [];
+      const totalAdvanceAmount = advancePayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+      const balanceAmount = Math.max(0, totalRate - totalAdvanceAmount);
 
       // Create single booking document for all rooms
       const booking = new Booking({
@@ -215,6 +220,11 @@ exports.bookRoom = async (req, res) => {
 
         paymentMode: extraDetails.paymentMode,
         paymentStatus: extraDetails.paymentStatus || 'Pending',
+
+        // Multiple Advance Payments
+        advancePayments: advancePayments,
+        totalAdvanceAmount: totalAdvanceAmount,
+        balanceAmount: balanceAmount,
 
         bookingRefNo: extraDetails.bookingRefNo,
 
@@ -562,7 +572,10 @@ exports.updateBooking = async (req, res) => {
 
       'status', 'categoryId',
 
-      'bookingDate', 'numberOfRooms', 'checkInDate', 'checkOutDate', 'days', 'timeIn', 'timeOut'
+      'bookingDate', 'numberOfRooms', 'checkInDate', 'checkOutDate', 'days', 'timeIn', 'timeOut',
+
+      // Multiple Advance Payment fields
+      'advancePayments', 'totalAdvanceAmount', 'balanceAmount'
     ];
 
     simpleFields.forEach(field => {
