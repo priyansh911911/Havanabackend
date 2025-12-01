@@ -9,7 +9,7 @@ const kotSchema = new mongoose.Schema({
   orderId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true
-  },
+  }, 
   orderType: {
     type: String,
     enum: ['restaurant', 'room-service'],
