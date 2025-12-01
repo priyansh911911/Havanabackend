@@ -11,8 +11,8 @@ exports.createOrder = async (req, res) => {
   try {
     const { serviceType, roomNumber, guestName, grcNo, bookingId, items, notes } = req.body;
     
-    if (!roomNumber || !items || items.length === 0) {
-      return res.status(400).json({ message: "Missing required fields" });
+    if (!roomNumber || !bookingId || !serviceType || !items || items.length === 0) {
+      return res.status(400).json({ message: "Missing required fields: roomNumber, bookingId, serviceType, and items are required" });
     }
 
     const orderCount = await RoomService.countDocuments();
@@ -36,7 +36,7 @@ exports.createOrder = async (req, res) => {
 
     const order = new RoomService({
       orderNumber,
-      serviceType: serviceType || 'Restaurant',
+      serviceType,
       roomNumber,
       guestName: guestName || 'Guest',
       grcNo,
@@ -63,13 +63,12 @@ exports.createOrder = async (req, res) => {
 // Get all orders (combines restaurant and room service orders)
 exports.getAllOrders = async (req, res) => {
   try {
-    const { status, roomNumber, serviceType, grcNo, page = 1, limit = 20 } = req.query;
+    const { status, bookingId, serviceType, grcNo, page = 1, limit = 20 } = req.query;
     
     // Get restaurant orders (room service)
     let restaurantOrders = [];
     if (RestaurantOrder) {
       let restaurantFilter = {};
-      if (roomNumber) restaurantFilter.tableNo = `R${roomNumber.toString().replace(/\D/g, '').padStart(3, '0')}`;
       if (grcNo) restaurantFilter.grcNo = grcNo;
       if (status) restaurantFilter.status = status;
       
@@ -82,7 +81,7 @@ exports.getAllOrders = async (req, res) => {
     // Get room service orders (non-restaurant)
     let roomServiceFilter = {};
     if (status) roomServiceFilter.status = status;
-    if (roomNumber) roomServiceFilter.roomNumber = roomNumber;
+    if (bookingId) roomServiceFilter.bookingId = bookingId;
     if (serviceType && serviceType !== 'Restaurant') roomServiceFilter.serviceType = serviceType;
     if (grcNo) roomServiceFilter.grcNo = grcNo;
 
@@ -264,15 +263,14 @@ exports.generateBill = async (req, res) => {
 // Bill lookup (searches both restaurant and room service orders)
 exports.billLookup = async (req, res) => {
   try {
-    const { billNumber, orderNumber, roomNumber, grcNo } = req.query;
+    const { billNumber, orderNumber, bookingId, grcNo } = req.query;
 
     let orders = [];
 
     // Search restaurant orders (room service)
-    if (RestaurantOrder && (grcNo || roomNumber)) {
+    if (RestaurantOrder && grcNo) {
       let restaurantFilter = {};
       if (grcNo) restaurantFilter.grcNo = grcNo;
-      if (roomNumber) restaurantFilter.tableNo = `R${roomNumber.toString().replace(/\D/g, '').padStart(3, '0')}`;
       
       const restaurantOrders = await RestaurantOrder.find({
         ...restaurantFilter,
@@ -291,7 +289,7 @@ exports.billLookup = async (req, res) => {
     let roomServiceFilter = {};
     if (billNumber) roomServiceFilter.billNumber = billNumber;
     if (orderNumber) roomServiceFilter.orderNumber = orderNumber;
-    if (roomNumber) roomServiceFilter.roomNumber = roomNumber;
+    if (bookingId) roomServiceFilter.bookingId = bookingId;
     if (grcNo) roomServiceFilter.grcNo = grcNo;
 
     if (Object.keys(roomServiceFilter).length > 0) {
@@ -319,10 +317,10 @@ exports.billLookup = async (req, res) => {
 // Get room service charges for checkout
 exports.getRoomServiceCharges = async (req, res) => {
   try {
-    const { bookingId, grcNo, roomNumber } = req.query;
+    const { bookingId, grcNo } = req.query;
     
-    if (!bookingId && !grcNo && !roomNumber) {
-      return res.status(400).json({ message: "Booking ID, GRC number, or room number is required" });
+    if (!bookingId && !grcNo) {
+      return res.status(400).json({ message: "Booking ID or GRC number is required" });
     }
 
     let orders = [];
@@ -333,9 +331,11 @@ exports.getRoomServiceCharges = async (req, res) => {
       paymentStatus: { $ne: 'paid' }
     };
     
-    if (bookingId) roomServiceFilter.bookingId = bookingId;
-    if (grcNo) roomServiceFilter.grcNo = grcNo;
-    if (roomNumber) roomServiceFilter.roomNumber = roomNumber;
+    if (bookingId) {
+      roomServiceFilter.bookingId = bookingId;
+    } else if (grcNo) {
+      roomServiceFilter.grcNo = grcNo;
+    }
 
     const roomServiceOrders = await RoomService.find(roomServiceFilter)
       .select('orderNumber serviceType totalAmount items createdAt roomNumber guestName')
@@ -368,10 +368,10 @@ exports.getRoomServiceCharges = async (req, res) => {
 // Mark room service orders as paid (includes both restaurant and room service)
 exports.markOrdersPaid = async (req, res) => {
   try {
-    const { bookingId, grcNo, roomNumber } = req.body;
+    const { bookingId, grcNo } = req.body;
     
-    if (!bookingId && !grcNo && !roomNumber) {
-      return res.status(400).json({ message: "Booking ID, GRC number, or room number is required" });
+    if (!bookingId && !grcNo) {
+      return res.status(400).json({ message: "Booking ID or GRC number is required" });
     }
 
     // Mark restaurant orders as paid
@@ -384,7 +384,6 @@ exports.markOrdersPaid = async (req, res) => {
       
       if (bookingId) restaurantFilter.bookingId = bookingId;
       if (grcNo) restaurantFilter.grcNo = grcNo;
-      if (roomNumber) restaurantFilter.tableNo = `R${roomNumber.toString().replace(/\D/g, '').padStart(3, '0')}`;
 
       await RestaurantOrder.updateMany(restaurantFilter, {
         paymentStatus: 'paid',
@@ -398,9 +397,11 @@ exports.markOrdersPaid = async (req, res) => {
       paymentStatus: "unpaid"
     };
     
-    if (bookingId) roomServiceFilter.bookingId = bookingId;
-    if (grcNo) roomServiceFilter.grcNo = grcNo;
-    if (roomNumber) roomServiceFilter.roomNumber = roomNumber;
+    if (bookingId) {
+      roomServiceFilter.bookingId = bookingId;
+    } else if (grcNo) {
+      roomServiceFilter.grcNo = grcNo;
+    }
 
     await RoomService.updateMany(roomServiceFilter, {
       paymentStatus: "paid"

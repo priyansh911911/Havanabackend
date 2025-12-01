@@ -24,7 +24,8 @@ const roomServiceSchema = new mongoose.Schema({
   },
   bookingId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Booking'
+    ref: 'Booking',
+    required: true
   },
   items: [{
     itemName: {
@@ -121,7 +122,8 @@ const roomServiceSchema = new mongoose.Schema({
 });
 
 // Index for efficient queries
-roomServiceSchema.index({ roomNumber: 1 });
+roomServiceSchema.index({ bookingId: 1, roomNumber: 1 });
+roomServiceSchema.index({ bookingId: 1 });
 roomServiceSchema.index({ grcNo: 1 });
 roomServiceSchema.index({ status: 1 });
 roomServiceSchema.index({ paymentStatus: 1 });
