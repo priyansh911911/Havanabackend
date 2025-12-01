@@ -32,8 +32,22 @@ const uploadBase64ToCloudinary = async (base64String) => {
 
 // 🔹 Generate sequential GRC number (resets in March end)
 const generateGRC = async () => {
-  // Find the highest existing GRC number
-  const lastBooking = await Booking.findOne({}, { grcNo: 1 })
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-based (March = 2)
+  
+  // Financial year starts from April (month 3)
+  const financialYear = currentMonth >= 3 ? currentYear : currentYear - 1;
+  const financialYearStart = new Date(financialYear, 3, 1); // April 1st
+  const financialYearEnd = new Date(financialYear + 1, 2, 31, 23, 59, 59); // March 31st
+  
+  // Find highest GRC in current financial year
+  const lastBooking = await Booking.findOne({
+    createdAt: {
+      $gte: financialYearStart,
+      $lte: financialYearEnd
+    }
+  }, { grcNo: 1 })
     .sort({ grcNo: -1 })
     .lean();
   
