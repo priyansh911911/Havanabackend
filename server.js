@@ -151,21 +151,9 @@ mongoose.connection.on('error', (err) => {
 // Initial connection attempt
 connectToMongoDB();
 
-// Middleware to check DB connection (non-blocking)
+// Middleware to add DB connection status to request object
 app.use((req, res, next) => {
-  // Add connection status to request object
   req.dbConnected = isConnected;
-  
-  // For API routes, return error if DB is not connected
-  if (req.path.startsWith('/api/') && !isConnected && req.path !== '/api/health') {
-    return res.status(503).json({
-      error: "Service temporarily unavailable",
-      message: "Database connection is not available. Please try again later.",
-      dbConnected: false,
-      connectionAttempts: connectionAttempts
-    });
-  }
-  
   next();
 });
 
