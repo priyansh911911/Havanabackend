@@ -1,121 +1,134 @@
 const User = require('../models/User');
+const bcrypt = require('bcryptjs');
 
-// Get all users (admin only)
-const getAllUsers = async (req, res) => {
+// Add new user
+exports.addUser = async (req, res) => {
   try {
-    const users = await User.find().select('-password');
-    res.json(users);
+    const { username, email, phoneNumber, password, role } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    if (existingUser) {
+      return res.status(400).json({ error: 'User already exists' });
+    }
+
+    // Create new user (password will be hashed by pre-save middleware)
+    const user = new User({
+      username,
+      email,
+      phoneNumber,
+      password,
+      role
+    });
+
+    await user.save();
+
+    // Remove password from response
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    res.status(201).json({
+      success: true,
+      message: 'User added successfully',
+      user: userResponse
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Get user by ID
-const getUserById = async (req, res) => {
+// Get all users
+exports.getAllUsers = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    res.json(user);
+    const users = await User.find({ status: 'active' })
+      .select('-password')
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, users });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
 // Update user
-const updateUser = async (req, res) => {
+exports.updateUser = async (req, res) => {
   try {
-    const { username, email, role, isActive } = req.body;
+    const { userId } = req.params;
+    const updates = req.body;
+
+    // Hash password if provided
+    if (updates.password) {
+      updates.password = await bcrypt.hash(updates.password, 10);
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      updates,
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'User updated successfully',
+      user
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Delete user (soft delete)
+exports.deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { status: 'inactive' },
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Toggle user status
+exports.toggleUserStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const newStatus = user.status === 'active' ? 'inactive' : 'active';
     
-    const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Check if username/email already exists (excluding current user)
-    if (username || email) {
-      const existingUser = await User.findOne({
-        $and: [
-          { _id: { $ne: req.params.id } },
-          { $or: [{ username }, { email }] }
-        ]
-      });
-      if (existingUser) {
-        return res.status(400).json({ error: 'Username or email already exists' });
-      }
-    }
-
-    // Update fields
-    if (username) user.username = username;
-    if (email) user.email = email;
-    if (role) user.role = role;
-    if (typeof isActive === 'boolean') user.isActive = isActive;
-
-    await user.save();
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { status: newStatus },
+      { new: true }
+    ).select('-password');
 
     res.json({
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        isActive: user.isActive
-      }
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-// Delete user
-const deleteUser = async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Prevent admin from deleting themselves
-    if (req.user._id.toString() === req.params.id) {
-      return res.status(400).json({ error: 'Cannot delete your own account' });
-    }
-
-    await User.findByIdAndDelete(req.params.id);
-    res.json({ message: 'User deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Toggle user status (activate/deactivate)
-const toggleUserStatus = async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    user.isActive = !user.isActive;
-    await user.save();
-
-    res.json({
-      message: `User ${user.isActive ? 'activated' : 'deactivated'} successfully`,
-      user: {
-        id: user._id,
-        username: user.username,
-        isActive: user.isActive
-      }
+      success: true,
+      message: `User ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`,
+      user: updatedUser
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-};
-
-module.exports = {
-  getAllUsers,
-  getUserById,
-  updateUser,
-  deleteUser,
-  toggleUserStatus
 };

@@ -1,28 +1,21 @@
 const express = require('express');
-const {
-  getAllUsers,
-  getUserById,
-  updateUser,
-  deleteUser,
-  toggleUserStatus
-} = require('../controllers/userController');
+const router = express.Router();
+const userController = require('../controllers/userController');
 const { auth, authorize } = require('../middleware/auth');
 
-const router = express.Router();
+// Add new user (Admin only)
+router.post('/add', auth, authorize('ADMIN'), userController.addUser);
 
-// Get all users (admin only)
-router.get('/', auth, authorize('admin'), getAllUsers);
+// Get all users (Admin and GM)
+router.get('/all', auth, authorize(['ADMIN', 'GM']), userController.getAllUsers);
 
-// Get user by ID (admin only)
-router.get('/:id', auth, authorize('admin'), getUserById);
+// Update user (Admin only)
+router.put('/update/:userId', auth, authorize('ADMIN'), userController.updateUser);
 
-// Update user (admin only)
-router.put('/:id', auth, authorize('admin'), updateUser);
+// Delete user (Admin only)
+router.delete('/delete/:userId', auth, authorize('ADMIN'), userController.deleteUser);
 
-// Delete user (admin only)
-router.delete('/:id', auth, authorize('admin'), deleteUser);
-
-// Toggle user status (admin only)
-router.patch('/:id/toggle-status', auth, authorize('admin'), toggleUserStatus);
+// Toggle user status (Admin only)
+router.patch('/toggle-status/:userId', auth, authorize('ADMIN'), userController.toggleUserStatus);
 
 module.exports = router;

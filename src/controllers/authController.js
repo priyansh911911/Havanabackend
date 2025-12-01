@@ -36,7 +36,7 @@ const login = async (req, res) => {
     const { username, password } = req.body;
 
     const user = await User.findOne({ username });
-    if (!user || !user.isActive) {
+    if (!user || user.status !== 'active') {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
