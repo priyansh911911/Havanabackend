@@ -9,7 +9,6 @@ try {
 // Create room service order (integrates with restaurant orders)
 exports.createOrder = async (req, res) => {
   try {
-    console.log('Room service order request:', req.body);
     const { serviceType, roomNumber, guestName, bookingNo, bookingId, items, notes } = req.body;
     
     if (!roomNumber || !serviceType || !items || items.length === 0) {
@@ -59,7 +58,6 @@ exports.createOrder = async (req, res) => {
     await order.save();
     res.status(201).json({ success: true, message: 'Room service order created successfully', order });
   } catch (error) {
-    console.error('Room service creation error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -157,7 +155,6 @@ exports.getOrderById = async (req, res) => {
 // Update entire order
 exports.updateOrder = async (req, res) => {
   try {
-    console.log('Update order request:', req.body);
     const { items, subtotal, totalAmount } = req.body;
     const order = await RoomService.findById(req.params.id);
 
@@ -174,10 +171,8 @@ exports.updateOrder = async (req, res) => {
     order.totalAmount = totalAmount;
     
     const savedOrder = await order.save();
-    console.log('Order updated successfully:', savedOrder._id);
     res.json({ success: true, order: savedOrder });
   } catch (error) {
-    console.error('Update order error:', error);
     res.status(500).json({ message: error.message });
   }
 };
