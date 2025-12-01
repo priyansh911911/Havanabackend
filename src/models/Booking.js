@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
+  bookingNo: { type: String, unique: true, index: true },
   grcNo: { type: String, unique: true, required: true },  // Guest Registration Card No
+  invoiceNumber: { type: String },  // Invoice number like HH/12/0001
   categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
 
   bookingDate: { type: Date, default: Date.now },
@@ -156,5 +158,27 @@ const bookingSchema = new mongoose.Schema({
   deletedAt: { type: Date },
   deletedBy: { type: String },
 }, { timestamps: true });
+
+// Add bookingNo index for fast lookups
+bookingSchema.index({ bookingNo: 1 }, { unique: true });
+
+// Pre-save middleware to generate unique bookingNo
+bookingSchema.pre('save', async function(next) {
+  if (!this.bookingNo) {
+    let unique = false;
+    while (!unique) {
+      const timestamp = Date.now();
+      const bookingNo = `BK${timestamp}`;
+      const existing = await this.constructor.findOne({ bookingNo });
+      if (!existing) {
+        this.bookingNo = bookingNo;
+        unique = true;
+      }
+      // Add small delay to ensure different timestamp if collision
+      await new Promise(resolve => setTimeout(resolve, 1));
+    }
+  }
+  next();
+});
 
 module.exports = mongoose.models.Booking || mongoose.model('Booking', bookingSchema);

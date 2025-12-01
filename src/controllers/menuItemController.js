@@ -68,7 +68,7 @@ exports.updateMenuItem = async (req, res) => {
 exports.deleteMenuItem = async (req, res) => {
   try {
     const { id } = req.params;
-    
+  
     const menuItem = await MenuItem.findByIdAndUpdate(id, { isActive: false }, { new: true });
     if (!menuItem) {
       return res.status(404).json({ success: false, message: "Menu item not found" });

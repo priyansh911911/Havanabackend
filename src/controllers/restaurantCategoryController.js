@@ -29,7 +29,6 @@ exports.addCategory = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
-
 // Update category
 exports.updateCategory = async (req, res) => {
   try {
@@ -45,7 +44,6 @@ exports.updateCategory = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
-
 // Delete category
 exports.deleteCategory = async (req, res) => {
   try {

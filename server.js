@@ -24,6 +24,7 @@ const roomInventoryChecklistRoutes = require("./src/routes/roomInventoryChecklis
 const menuItemRoutes = require("./src/routes/menuItemRoutes.js");
 const inventoryRoutes = require("./src/routes/inventoryRoutes.js");
 const roomServiceRoutes = require("./src/routes/roomServiceRoutes.js");
+const invoiceRoutes = require("./src/routes/invoiceRoutes.js");
 const path = require("path");
 // Initialize express app
 const app = express();
@@ -187,6 +188,7 @@ app.use("/api/room-inventory-checklists", roomInventoryChecklistRoutes);
 app.use("/api/menu-items", menuItemRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/room-service", roomServiceRoutes);
+app.use("/api/invoices", invoiceRoutes);
 
 
 // Health check endpoint

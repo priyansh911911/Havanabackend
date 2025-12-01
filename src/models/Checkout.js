@@ -56,6 +56,20 @@ const checkoutSchema = new mongoose.Schema({
   totalAmount: { type: Number, required: true },
   pendingAmount: { type: Number, default: 0 },
   
+  // Invoice details
+  invoiceNumber: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  invoiceGenerated: {
+    type: Boolean,
+    default: false
+  },
+  invoiceGeneratedAt: {
+    type: Date
+  },
+  
   status: {
     type: String,
     enum: ['pending', 'paid', 'partial'],

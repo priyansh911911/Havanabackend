@@ -11,11 +11,12 @@ router.post("/book", auth, upload.fields([
   ]), bookingController.bookRoom);
 router.get("/all", auth, bookingController.getBookings);
 router.get("/category/:categoryId", auth, bookingController.getBookingsByCategory);
+router.get("/next-grc", bookingController.getNextGRC);
 router.get("/grc/:grcNo", auth, bookingController.getBookingByGRC);
-router.get("/:bookingId", auth, bookingController.getBookingById);
 router.get("/fetch-by-grc/:grcNo", auth, bookingController.getDetailsByGrc);
 router.get("/customer/:grcNo", auth, bookingController.getCustomerDetailsByGRC);
 router.get("/search", auth, bookingController.searchCustomers);
+router.get("/:bookingId", auth, bookingController.getBookingById);
 router.post("/fix-rooms", auth, authorize('admin'), bookingController.fixRoomAvailability);
 router.delete("/unbook/:bookingId", auth, authorize('admin'), bookingController.deleteBooking);
 router.delete("/delete/:bookingId", auth, authorize('admin'), bookingController.permanentlyDeleteBooking);

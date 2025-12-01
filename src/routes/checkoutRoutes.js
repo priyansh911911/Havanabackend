@@ -11,6 +11,9 @@ router.get('/booking/:bookingId', checkoutController.getCheckout);
 // Update payment status
 router.put('/:id/payment', checkoutController.updatePaymentStatus);
 
+// Generate invoice
+router.post('/:id/generate-invoice', checkoutController.generateInvoice);
+
 // Get invoice by checkout ID
 router.get('/:id/invoice', checkoutController.getInvoice);
 
