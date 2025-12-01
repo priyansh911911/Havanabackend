@@ -80,35 +80,93 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Database connection
 let isConnected = false;
+let connectionAttempts = 0;
+const MAX_CONNECTION_ATTEMPTS = 3;
 
-// Middleware to ensure DB connection before each request
-app.use(async (req, res, next) => {
+// Initialize MongoDB connection
+const connectToMongoDB = async () => {
   try {
-    if (!isConnected) {
-      console.log("Attempting to connect to MongoDB...");
-      console.log("MongoDB URI:", process.env.MONGO_URI ? "URI found" : "URI missing");
-      
-      await mongoose.connect(process.env.MONGO_URI, {
-        serverSelectionTimeoutMS: 10000,
-        socketTimeoutMS: 15000,
-        connectTimeoutMS: 10000,
-        maxPoolSize: 10,
-        minPoolSize: 1,
-        maxIdleTimeMS: 30000
-      });
-      isConnected = true;
-      console.log("MongoDB connected successfully to:", mongoose.connection.name);
+    if (!process.env.MONGO_URI) {
+      throw new Error("MONGO_URI not found in environment variables");
     }
-    next();
+
+    console.log("Attempting to connect to MongoDB...");
+    console.log("MongoDB URI:", process.env.MONGO_URI ? "URI found" : "URI missing");
+    
+    const connectionOptions = {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 10000,
+      connectTimeoutMS: 5000,
+      maxPoolSize: 10,
+      minPoolSize: 1,
+      maxIdleTimeMS: 30000,
+      retryWrites: true,
+      w: 'majority'
+    };
+    
+    // Try primary connection
+    try {
+      await mongoose.connect(process.env.MONGO_URI, connectionOptions);
+    } catch (srvError) {
+      console.log("SRV connection failed, trying with different DNS settings...");
+      
+      // If SRV fails, try with family: 4 to force IPv4
+      connectionOptions.family = 4;
+      await mongoose.connect(process.env.MONGO_URI, connectionOptions);
+    }
+    
+    isConnected = true;
+    connectionAttempts = 0;
+    console.log("MongoDB connected successfully to:", mongoose.connection.name);
+    
   } catch (error) {
     console.error("Database connection failed:", error.message);
-    console.error("Full error:", error);
+    console.error("Error code:", error.code);
     isConnected = false;
-    res.status(500).json({ 
-      error: "Database connection failed",
-      details: error.message
+    connectionAttempts++;
+    
+    if (connectionAttempts < MAX_CONNECTION_ATTEMPTS) {
+      console.log(`Retrying connection in 5 seconds... (Attempt ${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS})`);
+      setTimeout(connectToMongoDB, 5000);
+    } else {
+      console.error("Max connection attempts reached. Server will continue without database.");
+    }
+  }
+};
+
+// Handle MongoDB connection events
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected');
+  isConnected = false;
+  if (connectionAttempts < MAX_CONNECTION_ATTEMPTS) {
+    connectToMongoDB();
+  }
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('MongoDB connection error:', err);
+  isConnected = false;
+});
+
+// Initial connection attempt
+connectToMongoDB();
+
+// Middleware to check DB connection (non-blocking)
+app.use((req, res, next) => {
+  // Add connection status to request object
+  req.dbConnected = isConnected;
+  
+  // For API routes, return error if DB is not connected
+  if (req.path.startsWith('/api/') && !isConnected && req.path !== '/api/health') {
+    return res.status(503).json({
+      error: "Service temporarily unavailable",
+      message: "Database connection is not available. Please try again later.",
+      dbConnected: false,
+      connectionAttempts: connectionAttempts
     });
   }
+  
+  next();
 });
 
 // Routes
@@ -139,7 +197,8 @@ app.get("/health", (req, res) => {
     status: "ok",
     dbConnected: isConnected,
     mongoUri: process.env.MONGO_URI ? "Present" : "Missing",
-    connectionState: mongoose.connection.readyState
+    connectionState: mongoose.connection.readyState,
+    connectionAttempts: connectionAttempts
   });
 });
 
@@ -148,6 +207,15 @@ app.get("/test-db", async (req, res) => {
   try {
     if (!process.env.MONGO_URI) {
       return res.status(500).json({ error: "MONGO_URI not found in environment" });
+    }
+    
+    if (!isConnected) {
+      return res.status(503).json({
+        error: "Database not connected",
+        message: "MongoDB connection is not available",
+        readyState: mongoose.connection.readyState,
+        connectionAttempts: connectionAttempts
+      });
     }
     
     const testConnection = await mongoose.connection.db.admin().ping();
