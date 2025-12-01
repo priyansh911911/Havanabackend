@@ -1,24 +1,27 @@
 const express = require('express');
 const router = express.Router();
 const checkoutController = require('../controllers/checkoutController');
+const { auth, authorize } = require('../middleware/auth');
 
-// Create checkout
-router.post('/create', checkoutController.createCheckout);
+// Create checkout (Front Desk, Accounts)
+router.post('/create', auth, authorize(['FRONT DESK', 'ACCOUNTS']), checkoutController.createCheckout);
 
-// Get checkout by booking ID
-router.get('/booking/:bookingId', checkoutController.getCheckout);
+// Get checkout by booking ID (Front Desk, Accounts, Admin)
+router.get('/booking/:bookingId', auth, authorize(['FRONT DESK', 'ACCOUNTS', 'ADMIN']), checkoutController.getCheckout);
 
-// Update payment status
-router.put('/:id/payment', checkoutController.updatePaymentStatus);
+// Update payment status (Accounts, Admin)
+router.put('/:id/payment', auth, authorize(['ACCOUNTS', 'ADMIN']), checkoutController.updatePaymentStatus);
 
-// Generate invoice
-router.post('/:id/generate-invoice', checkoutController.generateInvoice);
+// Generate invoice (Accounts, Admin, Front Desk)
+router.post('/:id/generate-invoice', auth, authorize(['ACCOUNTS', 'ADMIN', 'FRONT DESK']), checkoutController.generateInvoice);
 
-// Get invoice by checkout ID
-router.get('/:id/invoice', checkoutController.getInvoice);
+// Get invoice by checkout ID (Accounts, Admin, Front Desk)
+router.get('/:id/invoice', auth, authorize(['ACCOUNTS', 'ADMIN', 'FRONT DESK']), checkoutController.getInvoice);
 
-// Tax configuration routes
-router.get('/tax-config', checkoutController.getTaxConfig);
-router.put('/tax-config', checkoutController.updateTaxConfig);
+// Get tax configuration (Accounts, Admin)
+router.get('/tax-config', auth, authorize(['ACCOUNTS', 'ADMIN']), checkoutController.getTaxConfig);
+
+// Update tax configuration (Admin only)
+router.put('/tax-config', auth, authorize('ADMIN'), checkoutController.updateTaxConfig);
 
 module.exports = router;

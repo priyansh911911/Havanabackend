@@ -1,17 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const restaurantCategoryController = require('../controllers/restaurantCategoryController');
+const { auth, authorize } = require('../middleware/auth');
 
-// Get all categories
-router.get('/all', restaurantCategoryController.getAllCategories);
+// Get all restaurant categories (All roles)
+router.get('/all', auth, authorize(['ADMIN', 'GM', 'ACCOUNTS', 'STAFF', 'FRONT DESK']), restaurantCategoryController.getAllCategories);
 
-// Add new category
-router.post('/add', restaurantCategoryController.addCategory);
+// Add new restaurant category (Admin, GM)
+router.post('/add', auth, authorize(['ADMIN', 'GM']), restaurantCategoryController.addCategory);
 
-// Update category
-router.put('/update/:id', restaurantCategoryController.updateCategory);
+// Update restaurant category (Admin, GM)
+router.put('/update/:id', auth, authorize(['ADMIN', 'GM']), restaurantCategoryController.updateCategory);
 
-// Delete category
-router.delete('/delete/:id', restaurantCategoryController.deleteCategory);
+// Delete restaurant category (Admin only)
+router.delete('/delete/:id', auth, authorize('ADMIN'), restaurantCategoryController.deleteCategory);
 
 module.exports = router;
