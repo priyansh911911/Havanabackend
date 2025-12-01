@@ -38,8 +38,7 @@ const allowedOrigins = [
   "https://havana-f.vercel.app",
   "https://havana-f1.vercel.app",
   "https://havanabackend-gray.vercel.app",
-  "https://havana-f-chi.vercel.app",
-  
+  "https://havana-f-chi.vercel.app"
 ];
 
 const io = new Server(server, {
