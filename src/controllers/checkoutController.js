@@ -3,6 +3,7 @@ const Booking = require('../models/Booking');
 const Room = require('../models/Room');
 const mongoose = require('mongoose');
 const { TAX_CONFIG, calculateTaxableAmount, calculateCGST, calculateSGST } = require('../utils/taxConfig');
+const { generateInvoiceNumber } = require('../utils/invoiceNumberGenerator');
 const fs = require('fs');
 const path = require('path');
 
@@ -240,7 +241,7 @@ exports.getInvoice = async (req, res) => {
 
     const booking = checkout.bookingId;
     const currentDate = new Date();
-    const billNo = `P${Date.now().toString().slice(-10)}`;
+    const billNo = await generateInvoiceNumber();
     
     // Use booking's actual GST rates
     const bookingCgstRate = booking?.cgstRate || 0;
