@@ -16,6 +16,7 @@ router.get("/grc/:grcNo", auth, bookingController.getBookingByGRC);
 router.get("/fetch-by-grc/:grcNo", auth, bookingController.getDetailsByGrc);
 router.get("/customer/:grcNo", auth, bookingController.getCustomerDetailsByGRC);
 router.get("/search", auth, bookingController.searchCustomers);
+router.get("/booking-number/:bookingNo", auth, bookingController.getBookingByNumber);
 router.get("/:bookingId", auth, bookingController.getBookingById);
 router.post("/fix-rooms", auth, authorize('admin'), bookingController.fixRoomAvailability);
 router.delete("/unbook/:bookingId", auth, authorize('admin'), bookingController.deleteBooking);

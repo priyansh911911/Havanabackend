@@ -853,6 +853,28 @@ exports.getBookingById = async (req, res) => {
   }
 };
 
+// Get booking by Booking Number
+exports.getBookingByNumber = async (req, res) => {
+  try {
+    const { bookingNo } = req.params;
+
+    const booking = await Booking.findOne({ bookingNo }).populate('categoryId');
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    const result = booking.toObject ? booking.toObject() : booking;
+    if (!result.categoryId) {
+      result.categoryId = { name: 'Unknown' };
+    }
+
+    res.json({ success: true, booking: result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // Get booking history with invoices
 exports.getBookingHistory = async (req, res) => {
   try {
