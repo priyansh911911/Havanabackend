@@ -446,10 +446,6 @@ exports.deleteOrder = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    if (order.status !== "pending") {
-      return res.status(400).json({ message: "Cannot delete confirmed orders" });
-    }
-
     if (isRestaurantOrder) {
       await RestaurantOrder.findByIdAndDelete(req.params.id);
     } else {
