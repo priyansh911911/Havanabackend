@@ -67,7 +67,7 @@ default:"Wedding",
 },
 bookingStatus: {
   type: String,
-  enum: ["Tentative", "Confirmed", "Enquiry"], 
+  enum: ["Tentative", "Confirmed", "Enquiry", "Cancelled"], 
   default: "Tentative",
 },
   notes: { type: String, trim: true },

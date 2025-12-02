@@ -584,6 +584,33 @@ exports.updateBooking = async (req, res) => {
     const booking = await Booking.findById(bookingId);
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
+    // Handle status change to Cancelled or Checked Out
+    if (updates.status && (updates.status === 'Cancelled' || updates.status === 'Checked Out')) {
+      const roomNumbers = booking.roomNumber ? booking.roomNumber.split(',').map(num => num.trim()) : [];
+      
+      // Set all rooms to available
+      for (const roomNum of roomNumbers) {
+        let room = await Room.findOne({ room_number: roomNum });
+        
+        if (!room) {
+          room = await Room.findOne({ room_number: String(roomNum) });
+        }
+        
+        if (!room && booking.categoryId) {
+          room = await Room.findOne({
+            categoryId: booking.categoryId,
+            room_number: roomNum
+          });
+        }
+
+        if (room) {
+          room.status = 'available';
+          await room.save();
+          console.log(`Room ${room.room_number} set to available after ${updates.status}`);
+        }
+      }
+    }
+
     // Handle room changes if selectedRooms is provided
     if (updates.selectedRooms && Array.isArray(updates.selectedRooms)) {
       const oldRoomNumbers = booking.roomNumber ? booking.roomNumber.split(',').map(num => num.trim()) : [];
