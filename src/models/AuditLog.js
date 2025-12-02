@@ -4,7 +4,7 @@ const auditLogSchema = new mongoose.Schema({
   action: {
     type: String,
     required: true,
-    enum: ['CREATE', 'UPDATE', 'DELETE']
+    enum: ['CREATE', 'UPDATE', 'DELETE', 'CHECKOUT', 'CANCEL', 'EXTEND', 'AMEND']
   },
   module: {
     type: String,

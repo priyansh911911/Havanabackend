@@ -1,6 +1,7 @@
 const Booking = require("../models/Booking.js");
 const Category = require("../models/Category.js");
 const Room = require("../models/Room.js");
+const { getAuditLogModel } = require('../models/AuditLogModel');
 const mongoose = require('mongoose');
 const cloudinary = require('../utils/cloudinary');
 
@@ -8,6 +9,30 @@ const cloudinary = require('../utils/cloudinary');
 const TAX_RATES = {
   cgstRate: 0.025, // 2.5%
   sgstRate: 0.025  // 2.5%
+};
+
+// Helper function to create audit log (non-blocking)
+const createAuditLog = (action, recordId, userId, userRole, oldData, newData, req) => {
+  // Run asynchronously without blocking main operation
+  setImmediate(async () => {
+    try {
+      const AuditLog = await getAuditLogModel();
+      await AuditLog.create({
+        action,
+        module: 'BOOKING',
+        recordId,
+        userId: userId || new mongoose.Types.ObjectId(),
+        userRole: userRole || 'SYSTEM',
+        oldData,
+        newData,
+        ipAddress: req?.ip || req?.connection?.remoteAddress,
+        userAgent: req?.get('User-Agent')
+      });
+      console.log(`✅ Audit log created: ${action} for booking ${recordId}`);
+    } catch (error) {
+      console.error('❌ Audit log creation failed:', error);
+    }
+  });
 };
 
 // Upload base64 image to Cloudinary
@@ -133,6 +158,12 @@ exports.bookRoom = async (req, res) => {
 
       // Calculate tax amounts using dynamic rates
       let taxableAmount = extraDetails.rate || 0; // Input rate is the taxable amount
+      
+      // Apply discount if provided
+      if (extraDetails.discountPercent && extraDetails.discountPercent > 0) {
+        const discountAmount = taxableAmount * (extraDetails.discountPercent / 100);
+        taxableAmount = taxableAmount - discountAmount;
+      }
       
       // Add extra bed charges if applicable - calculate based on room rates
       if (extraDetails.roomRates && Array.isArray(extraDetails.roomRates)) {
@@ -278,6 +309,7 @@ exports.bookRoom = async (req, res) => {
 
         discountPercent: extraDetails.discountPercent,
         discountRoomSource: extraDetails.discountRoomSource,
+        discountNotes: extraDetails.discountNotes,
 
         paymentMode: extraDetails.paymentMode,
         paymentStatus: extraDetails.paymentStatus || 'Pending',
@@ -303,6 +335,9 @@ exports.bookRoom = async (req, res) => {
       });
 
       await booking.save();
+
+      // Create audit log for booking creation
+      await createAuditLog('CREATE', booking._id, req.user?.id, req.user?.role, null, booking.toObject(), req);
 
       // Set all rooms status to 'booked'
       for (const room of roomsToBook) {
@@ -451,9 +486,15 @@ exports.checkoutBooking = async (req, res) => {
       return res.status(400).json({ error: 'Only checked-in bookings can be checked out' });
     }
 
+    // Store original data for audit log
+    const originalData = booking.toObject();
+
     // Update booking status to 'Checked Out'
     booking.status = 'Checked Out';
     await booking.save();
+
+    // Create audit log for booking checkout
+    await createAuditLog('CHECKOUT', booking._id, req.user?.id, req.user?.role, originalData, booking.toObject(), req);
 
     // Handle multiple room numbers (comma-separated)
     const roomNumbers = booking.roomNumber.split(',').map(num => num.trim());
@@ -504,6 +545,9 @@ exports.deleteBooking = async (req, res) => {
     const booking = await Booking.findById(bookingId);
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
+    // Store original data for audit log
+    const originalData = booking.toObject();
+
     // Even if booking is already inactive, proceed with room status update
     if (!booking.isActive) {
       console.log('Note: Booking was already inactive, proceeding with room status update');
@@ -511,6 +555,9 @@ exports.deleteBooking = async (req, res) => {
       booking.isActive = false;
       await booking.save();
     }
+
+    // Create audit log for booking deletion
+    await createAuditLog('CANCEL', booking._id, req.user?.id, req.user?.role, originalData, booking.toObject(), req);
 
     // Handle multiple room numbers (comma-separated)
     const roomNumbers = booking.roomNumber.split(',').map(num => num.trim());
@@ -560,10 +607,16 @@ exports.permanentlyDeleteBooking = async (req, res) => {
     const booking = await Booking.findById(bookingId);
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
+    // Store original data for audit log
+    const originalData = booking.toObject();
+
     booking.deleted = true;
     booking.deletedAt = new Date();
     booking.deletedBy = req.user?.username || 'System';
     await booking.save();
+
+    // Create audit log for permanent booking deletion
+    await createAuditLog('DELETE', booking._id, req.user?.id, req.user?.role, originalData, booking.toObject(), req);
 
     res.json({ success: true, message: 'Booking deleted successfully' });
   } catch (error) {
@@ -583,6 +636,9 @@ exports.updateBooking = async (req, res) => {
 
     const booking = await Booking.findById(bookingId);
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    // Store original data for audit log
+    const originalData = booking.toObject();
 
     // Handle status change to Cancelled or Checked Out
     if (updates.status && (updates.status === 'Cancelled' || updates.status === 'Checked Out')) {
@@ -655,7 +711,7 @@ exports.updateBooking = async (req, res) => {
 
       'arrivedFrom', 'destination', 'remark', 'businessSource', 'marketSegment', 'purposeOfVisit',
 
-      'discountPercent', 'discountRoomSource',
+      'discountPercent', 'discountRoomSource', 'discountNotes',
 
       'paymentMode', 'paymentStatus',
 
@@ -722,6 +778,9 @@ exports.updateBooking = async (req, res) => {
 
     await booking.save({ validateBeforeSave: false });
 
+    // Create audit log for booking update
+    await createAuditLog('UPDATE', booking._id, req.user?.id, req.user?.role, originalData, booking.toObject(), req);
+
     res.json({
       success: true,
       message: 'Booking updated successfully',
@@ -745,6 +804,8 @@ exports.extendBooking = async (req, res) => {
       return res.status(400).json({ error: 'Cannot extend inactive booking' });
     }
 
+    // Store original data for audit log
+    const originalData = booking.toObject();
     const originalCheckIn = booking.checkInDate;
     const originalCheckOut = booking.checkOutDate;
 
@@ -768,6 +829,9 @@ exports.extendBooking = async (req, res) => {
     }
 
     await booking.save();
+
+    // Create audit log for booking extension
+    await createAuditLog('EXTEND', booking._id, req.user?.id, req.user?.role, originalData, booking.toObject(), req);
 
     res.json({
       success: true,
@@ -987,6 +1051,9 @@ exports.amendBookingStay = async (req, res) => {
       return res.status(400).json({ error: 'Cannot amend inactive booking' });
     }
 
+    // Store original data for audit log
+    const originalData = booking.toObject();
+
     if (booking.status === 'Checked Out') {
       return res.status(400).json({ error: 'Cannot amend checked out booking' });
     }
@@ -1109,6 +1176,9 @@ exports.amendBookingStay = async (req, res) => {
     booking.rate = newTotalAmount;
 
     await booking.save();
+
+    // Create audit log for booking amendment
+    await createAuditLog('AMEND', booking._id, req.user?.id, req.user?.role, originalData, booking.toObject(), req);
 
     // Send notification (implement your notification service)
     try {
