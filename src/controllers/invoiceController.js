@@ -115,11 +115,22 @@ exports.getNextInvoiceNumber = async (req, res) => {
     }
     
     // Generate actual invoice number (increments counter)
-    const invoiceNumber = await exports.generateInvoiceNumber(format);
+    const invoiceNumber = await exports.generateInvoiceNumber(format, true);
     
     // Save invoice record if bookingId provided
     if (bookingId) {
-      await Invoice.create({ bookingId, invoiceNumber, format, createdAt: new Date() });
+      try {
+        await Invoice.create({ bookingId, invoiceNumber, format, createdAt: new Date() });
+      } catch (error) {
+        // If duplicate bookingId, return existing invoice
+        if (error.code === 11000) {
+          const existingInvoice = await Invoice.findOne({ bookingId });
+          if (existingInvoice) {
+            return res.json({ success: true, invoiceNumber: existingInvoice.invoiceNumber });
+          }
+        }
+        throw error;
+      }
     }
     
     res.json({ success: true, invoiceNumber, format });
