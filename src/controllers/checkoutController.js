@@ -302,7 +302,7 @@ exports.generateInvoice = async (req, res) => {
     
     // Generate invoice number if not exists
     if (!checkout.invoiceNumber) {
-      checkout.invoiceNumber = await generateInvoiceNumber();
+      checkout.invoiceNumber = await generateInvoiceNumber('monthly', true);
       checkout.invoiceGenerated = true;
       checkout.invoiceGeneratedAt = new Date();
       await checkout.save();
@@ -384,11 +384,33 @@ exports.getInvoice = async (req, res) => {
     // Generate invoice number only if not already generated
     let billNo = checkout.invoiceNumber;
     if (!billNo) {
-      billNo = await generateInvoiceNumber();
-      checkout.invoiceNumber = billNo;
-      checkout.invoiceGenerated = true;
-      checkout.invoiceGeneratedAt = currentDate;
-      await checkout.save();
+      try {
+        billNo = await generateInvoiceNumber('monthly', true);
+        checkout.invoiceNumber = billNo;
+        checkout.invoiceGenerated = true;
+        checkout.invoiceGeneratedAt = currentDate;
+        await checkout.save();
+      } catch (invoiceError) {
+        // If invoice generation fails due to duplicate, try to get existing invoice
+        if (invoiceError.message.includes('duplicate') || invoiceError.code === 11000) {
+          // Refresh checkout data to get any invoice number that might have been generated
+          const refreshedCheckout = await Checkout.findById(id);
+          if (refreshedCheckout && refreshedCheckout.invoiceNumber) {
+            billNo = refreshedCheckout.invoiceNumber;
+            checkout.invoiceNumber = billNo;
+          } else {
+            // Generate a new unique invoice number with timestamp
+            const timestamp = Date.now().toString().slice(-4);
+            billNo = await generateInvoiceNumber('monthly', true) + '-' + timestamp;
+            checkout.invoiceNumber = billNo;
+            checkout.invoiceGenerated = true;
+            checkout.invoiceGeneratedAt = currentDate;
+            await checkout.save();
+          }
+        } else {
+          throw invoiceError;
+        }
+      }
     }
     
     // Use booking's actual GST rates

@@ -2,76 +2,87 @@ const InvoiceCounter = require('../models/InvoiceCounter');
 const Invoice = require('../models/Invoice');
 
 // Generate invoice number with different formats (only increments counter when actually used)
-exports.generateInvoiceNumber = async (format = 'monthly', incrementCounter = true) => {
+exports.generateInvoiceNumber = async (format = 'monthly', incrementCounter = true, retryCount = 0) => {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   
   let counter, invoiceNumber;
   
-  switch (format) {
-    case 'monthly': // HH/MM/0001 (resets each month)
-      const monthKey = `${year}-${month}`;
-      counter = await InvoiceCounter.findOne({ month: monthKey });
-      if (!counter) {
-        counter = new InvoiceCounter({ month: monthKey, counter: 0 });
-      }
-      const nextCount = counter.counter + 1;
-      if (incrementCounter) {
-        counter.counter = nextCount;
-        await counter.save();
-      }
-      invoiceNumber = `HH/${month}/${String(nextCount).padStart(4, '0')}`;
-      break;
+  try {
+    switch (format) {
+      case 'monthly': // HH/MM/0001 (resets each month)
+        const monthKey = `${year}-${month}`;
+        counter = await InvoiceCounter.findOne({ month: monthKey });
+        if (!counter) {
+          counter = new InvoiceCounter({ month: monthKey, counter: 0 });
+        }
+        const nextCount = counter.counter + 1;
+        if (incrementCounter) {
+          counter.counter = nextCount;
+          await counter.save();
+        }
+        invoiceNumber = `HH/${month}/${String(nextCount).padStart(4, '0')}`;
+        break;
       
-    case 'yearly': // HH/2025/0001 (resets each year)
-      const yearKey = `${year}`;
-      counter = await InvoiceCounter.findOne({ month: yearKey });
-      if (!counter) {
-        counter = new InvoiceCounter({ month: yearKey, counter: 0 });
-      }
-      const nextYearCount = counter.counter + 1;
-      if (incrementCounter) {
-        counter.counter = nextYearCount;
-        await counter.save();
-      }
-      invoiceNumber = `HH/${year}/${String(nextYearCount).padStart(4, '0')}`;
-      break;
-      
-    case 'continuous': // HH-000001 (never resets)
-      const globalKey = 'global';
-      counter = await InvoiceCounter.findOne({ month: globalKey });
-      if (!counter) {
-        counter = new InvoiceCounter({ month: globalKey, counter: 0 });
-      }
-      const nextGlobalCount = counter.counter + 1;
-      if (incrementCounter) {
-        counter.counter = nextGlobalCount;
-        await counter.save();
-      }
-      invoiceNumber = `HH-${String(nextGlobalCount).padStart(6, '0')}`;
-      break;
-      
-    case 'simple': // INV-0001 (simple format)
-      const simpleKey = 'simple';
-      counter = await InvoiceCounter.findOne({ month: simpleKey });
-      if (!counter) {
-        counter = new InvoiceCounter({ month: simpleKey, counter: 0 });
-      }
-      const nextSimpleCount = counter.counter + 1;
-      if (incrementCounter) {
-        counter.counter = nextSimpleCount;
-        await counter.save();
-      }
-      invoiceNumber = `INV-${String(nextSimpleCount).padStart(4, '0')}`;
-      break;
-      
-    default:
-      // Default to monthly format
-      return await exports.generateInvoiceNumber('monthly', incrementCounter);
+      case 'yearly': // HH/2025/0001 (resets each year)
+        const yearKey = `${year}`;
+        counter = await InvoiceCounter.findOne({ month: yearKey });
+        if (!counter) {
+          counter = new InvoiceCounter({ month: yearKey, counter: 0 });
+        }
+        const nextYearCount = counter.counter + 1;
+        if (incrementCounter) {
+          counter.counter = nextYearCount;
+          await counter.save();
+        }
+        invoiceNumber = `HH/${year}/${String(nextYearCount).padStart(4, '0')}`;
+        break;
+        
+      case 'continuous': // HH-000001 (never resets)
+        const globalKey = 'global';
+        counter = await InvoiceCounter.findOne({ month: globalKey });
+        if (!counter) {
+          counter = new InvoiceCounter({ month: globalKey, counter: 0 });
+        }
+        const nextGlobalCount = counter.counter + 1;
+        if (incrementCounter) {
+          counter.counter = nextGlobalCount;
+          await counter.save();
+        }
+        invoiceNumber = `HH-${String(nextGlobalCount).padStart(6, '0')}`;
+        break;
+        
+      case 'simple': // INV-0001 (simple format)
+        const simpleKey = 'simple';
+        counter = await InvoiceCounter.findOne({ month: simpleKey });
+        if (!counter) {
+          counter = new InvoiceCounter({ month: simpleKey, counter: 0 });
+        }
+        const nextSimpleCount = counter.counter + 1;
+        if (incrementCounter) {
+          counter.counter = nextSimpleCount;
+          await counter.save();
+        }
+        invoiceNumber = `INV-${String(nextSimpleCount).padStart(4, '0')}`;
+        break;
+        
+      default:
+        // Default to monthly format
+        return await exports.generateInvoiceNumber('monthly', incrementCounter, retryCount);
+    }
+    
+    return invoiceNumber;
+  } catch (error) {
+    // Handle duplicate key errors and retry
+    if ((error.code === 11000 || error.message.includes('duplicate')) && retryCount < 3) {
+      console.log(`Invoice generation conflict, retrying... (attempt ${retryCount + 1})`);
+      // Wait a small random time before retry
+      await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
+      return await exports.generateInvoiceNumber(format, incrementCounter, retryCount + 1);
+    }
+    throw error;
   }
-  
-  return invoiceNumber;
 };
 
 // Preview next invoice number without incrementing counter

@@ -13,7 +13,7 @@ router.post('/reset-counter', auth, authorize('ADMIN'), invoiceController.resetI
 router.post('/generate-for-booking', auth, authorize(['ADMIN', 'FRONT DESK', 'STAFF']), async (req, res) => {
   try {
     const { format = 'monthly' } = req.body;
-    const invoiceNumber = await invoiceController.generateInvoiceNumber(format);
+    const invoiceNumber = await invoiceController.generateInvoiceNumber(format, true);
     res.json({ success: true, invoiceNumber, format });
   } catch (error) {
     res.status(500).json({ error: error.message });

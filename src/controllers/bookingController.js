@@ -72,18 +72,59 @@ exports.bookRoom = async (req, res) => {
       if (selectedRooms && Array.isArray(selectedRooms) && selectedRooms.length > 0) {
         // Get the specific rooms that were selected
         const roomIds = selectedRooms.map(room => room._id);
-        roomsToBook = await Room.find({ _id: { $in: roomIds }, status: 'available' });
+        roomsToBook = await Room.find({ _id: { $in: roomIds } });
         
         if (roomsToBook.length !== selectedRooms.length) {
-          throw new Error(`Some selected rooms are no longer available`);
+          throw new Error(`Some selected rooms not found`);
+        }
+        
+        // Check for actual booking conflicts instead of just room status
+        const checkIn = new Date(extraDetails.checkInDate + 'T00:00:00.000Z');
+        const checkOut = new Date(extraDetails.checkOutDate + 'T23:59:59.999Z');
+        
+        for (const room of roomsToBook) {
+          const conflictingBookings = await Booking.find({
+            roomNumber: { $regex: new RegExp(`(^|,)\\s*${room.room_number}\\s*(,|$)`) },
+            status: { $in: ['Booked', 'Checked In'] },
+            isActive: true,
+            checkInDate: { $lt: checkOut },
+            checkOutDate: { $gt: checkIn }
+          });
+          
+          if (conflictingBookings.length > 0) {
+            throw new Error(`Room ${room.room_number} is not available for the selected dates`);
+          }
         }
       } else {
         // Fallback to old behavior - get any available rooms
         const count = extraDetails.numberOfRooms || 1;
-        roomsToBook = await Room.find({ categoryId: categoryId, status: 'available' }).limit(count);
+        
+        // Check for actual availability based on booking conflicts
+        const checkIn = new Date(extraDetails.checkInDate + 'T00:00:00.000Z');
+        const checkOut = new Date(extraDetails.checkOutDate + 'T23:59:59.999Z');
+        
+        const overlappingBookings = await Booking.find({
+          isActive: true,
+          status: { $in: ['Booked', 'Checked In'] },
+          checkInDate: { $lt: checkOut },
+          checkOutDate: { $gt: checkIn }
+        }).lean();
+        
+        const bookedRoomNumbers = [];
+        overlappingBookings.forEach(booking => {
+          if (booking.roomNumber) {
+            const roomNums = booking.roomNumber.split(',').map(num => num.trim());
+            bookedRoomNumbers.push(...roomNums);
+          }
+        });
+        
+        roomsToBook = await Room.find({ 
+          categoryId: categoryId, 
+          room_number: { $nin: bookedRoomNumbers }
+        }).limit(count);
         
         if (roomsToBook.length < count) {
-          throw new Error(`Not enough available rooms in ${category.name}`);
+          throw new Error(`Not enough available rooms in ${category.name} for the selected dates`);
         }
       }
 
