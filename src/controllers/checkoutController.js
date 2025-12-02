@@ -27,11 +27,12 @@ exports.createCheckout = async (req, res) => {
       // Split room numbers and check each one
       const roomNumbers = booking.roomNumber ? booking.roomNumber.split(',').map(r => r.trim()) : [];
       
-      // Get restaurant orders for this booking (exclude cancelled and completed orders)
+      // Get restaurant orders for this booking (exclude cancelled, completed, and non-chargeable orders)
       const restaurantOrders = await RestaurantOrder.find({
         bookingId: bookingId,
         paymentStatus: { $ne: 'paid' },
-        status: { $nin: ['cancelled', 'canceled', 'completed'] }
+        status: { $nin: ['cancelled', 'canceled', 'completed'] },
+        nonChargeable: { $ne: true }
       });
       
       restaurantCharges = restaurantOrders.reduce((total, order) => {
@@ -113,7 +114,8 @@ exports.getCheckout = async (req, res) => {
           { bookingId: bookingId }
         ],
         paymentStatus: { $ne: 'paid' },
-        status: { $nin: ['cancelled', 'canceled'] }
+        status: { $nin: ['cancelled', 'canceled'] },
+        nonChargeable: { $ne: true }
       });
       
       const roomServiceOrders = await RoomService.find({
@@ -169,7 +171,8 @@ exports.getCheckoutByBooking = async (req, res) => {
           { bookingId: bookingId }
         ],
         paymentStatus: { $ne: 'paid' },
-        status: { $nin: ['cancelled', 'canceled'] }
+        status: { $nin: ['cancelled', 'canceled'] },
+        nonChargeable: { $ne: true }
       });
       
       const roomServiceOrders = await RoomService.find({
@@ -249,7 +252,8 @@ exports.updatePaymentStatus = async (req, res) => {
             {
               tableNo: { $in: roomNumbers },
               paymentStatus: { $ne: 'paid' },
-              status: { $ne: 'cancelled' }
+              status: { $ne: 'cancelled' },
+              nonChargeable: { $ne: true }
             },
             {
               paymentStatus: 'paid',
@@ -341,10 +345,11 @@ exports.getInvoice = async (req, res) => {
       // Split room numbers and check each one
       const roomNumbers = booking.roomNumber ? booking.roomNumber.split(',').map(r => r.trim()) : [];
       
-      // Get orders for this specific booking only
+      // Get orders for this specific booking only (exclude non-chargeable)
       const restaurantOrders = await RestaurantOrder.find({
         bookingId: booking._id,
-        status: { $nin: ['cancelled', 'canceled'] }
+        status: { $nin: ['cancelled', 'canceled'] },
+        nonChargeable: { $ne: true }
       });
       
       // Also check RoomService model for room service orders

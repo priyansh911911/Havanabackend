@@ -154,6 +154,12 @@ exports.bookRoom = async (req, res) => {
       // Calculate tax amounts using dynamic rates
       let taxableAmount = extraDetails.rate || 0; // Input rate is the taxable amount
       
+      // Apply discount if provided
+      if (extraDetails.discountPercent && extraDetails.discountPercent > 0) {
+        const discountAmount = taxableAmount * (extraDetails.discountPercent / 100);
+        taxableAmount = taxableAmount - discountAmount;
+      }
+      
       // Add extra bed charges if applicable - calculate based on room rates
       if (extraDetails.roomRates && Array.isArray(extraDetails.roomRates)) {
         const extraBedCharges = extraDetails.roomRates.reduce((sum, roomRate) => {
@@ -298,6 +304,7 @@ exports.bookRoom = async (req, res) => {
 
         discountPercent: extraDetails.discountPercent,
         discountRoomSource: extraDetails.discountRoomSource,
+        discountNotes: extraDetails.discountNotes,
 
         paymentMode: extraDetails.paymentMode,
         paymentStatus: extraDetails.paymentStatus || 'Pending',
@@ -699,7 +706,7 @@ exports.updateBooking = async (req, res) => {
 
       'arrivedFrom', 'destination', 'remark', 'businessSource', 'marketSegment', 'purposeOfVisit',
 
-      'discountPercent', 'discountRoomSource',
+      'discountPercent', 'discountRoomSource', 'discountNotes',
 
       'paymentMode', 'paymentStatus',
 

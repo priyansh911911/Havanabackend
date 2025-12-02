@@ -89,6 +89,10 @@ const restaurantOrderSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  nonChargeable: {
+    type: Boolean,
+    default: false
+  },
   isMembership: {
     type: Boolean,
     default: false
