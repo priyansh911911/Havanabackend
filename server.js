@@ -25,6 +25,9 @@ const menuItemRoutes = require("./src/routes/menuItemRoutes.js");
 const inventoryRoutes = require("./src/routes/inventoryRoutes.js");
 const roomServiceRoutes = require("./src/routes/roomServiceRoutes.js");
 const invoiceRoutes = require("./src/routes/invoiceRoutes.js");
+const auditRoutes = require("./src/routes/auditRoutes.js");
+const dashboardRoutes = require("./src/routes/dashboardRoutes.js");
+const { connectAuditDB } = require("./src/config/auditDatabase.js");
 const path = require("path");
 // Initialize express app
 const app = express();
@@ -151,6 +154,11 @@ mongoose.connection.on('error', (err) => {
 // Initial connection attempt
 connectToMongoDB();
 
+// Initialize audit database connection
+connectAuditDB().catch(error => {
+  console.error('Failed to connect to audit database:', error.message);
+});
+
 // Middleware to add DB connection status to request object
 app.use((req, res, next) => {
   req.dbConnected = isConnected;
@@ -177,6 +185,8 @@ app.use("/api/menu-items", menuItemRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/room-service", roomServiceRoutes);
 app.use("/api/invoices", invoiceRoutes);
+app.use("/api/audit", auditRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 
 // Health check endpoint

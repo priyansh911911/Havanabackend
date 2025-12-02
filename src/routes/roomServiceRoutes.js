@@ -36,7 +36,7 @@ router.get('/charges/checkout', auth, authorize(['FRONT DESK', 'ACCOUNTS']), roo
 // Mark orders as paid (Accounts, Admin)
 router.post('/mark-paid', auth, authorize(['ACCOUNTS', 'ADMIN']), roomServiceController.markOrdersPaid);
 
-// Delete order (Admin only)
-router.delete('/:id', auth, authorize('ADMIN'), roomServiceController.deleteOrder);
+// Delete order
+router.delete('/:id', auth, roomServiceController.deleteOrder);
 
 module.exports = router;
