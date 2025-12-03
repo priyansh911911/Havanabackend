@@ -35,6 +35,10 @@ const restaurantOrderSchema = new mongoose.Schema({
       type: Number,
       required: false,
       min: 0
+    },
+    isFree: {
+      type: Boolean,
+      default: false
     }
   }],
   notes: {
@@ -157,12 +161,20 @@ const restaurantOrderSchema = new mongoose.Schema({
 
 // Pre-save middleware to calculate GST amounts
 restaurantOrderSchema.pre('save', function(next) {
-  if (this.isModified('subtotal') || this.isModified('sgstRate') || this.isModified('cgstRate')) {
-    this.sgstAmount = (this.subtotal * this.sgstRate) / 100;
-    this.cgstAmount = (this.subtotal * this.cgstRate) / 100;
-    this.totalGstAmount = this.sgstAmount + this.cgstAmount;
-    this.amount = this.subtotal + this.totalGstAmount - this.discount;
-  }
+  // Calculate subtotal excluding free items
+  const paidItemsSubtotal = this.items.reduce((sum, item) => {
+    return sum + (item.isFree ? 0 : (item.price * item.quantity));
+  }, 0);
+  
+  this.subtotal = paidItemsSubtotal;
+  this.sgstAmount = (this.subtotal * this.sgstRate) / 100;
+  this.cgstAmount = (this.subtotal * this.cgstRate) / 100;
+  this.totalGstAmount = this.sgstAmount + this.cgstAmount;
+  this.amount = this.subtotal + this.totalGstAmount - this.discount;
+  
+  // Set nonChargeable to true if all items are free
+  this.nonChargeable = this.items.length > 0 && this.items.every(item => item.isFree);
+  
   next();
 });
 
