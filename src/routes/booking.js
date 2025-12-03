@@ -39,13 +39,13 @@ router.get("/booking-number/:bookingNo", auth, authorize(['ADMIN', 'GM', 'ACCOUN
 router.get("/:bookingId", auth, authorize(['ADMIN', 'GM', 'ACCOUNTS', 'STAFF', 'FRONT DESK']), bookingController.getBookingById);
 
 // Fix room availability (Admin only)
-router.post("/fix-rooms", auth, authorize('ADMIN'), bookingController.fixRoomAvailability);
+router.post("/fix-rooms", auth, authorize(['ADMIN']), bookingController.fixRoomAvailability);
 
 // Delete booking (Admin only)
-router.delete("/unbook/:bookingId", auth, authorize('ADMIN'), bookingController.deleteBooking);
+router.delete("/unbook/:bookingId", auth, authorize(['ADMIN']), bookingController.deleteBooking);
 
 // Permanently delete booking (Admin only)
-router.delete("/delete/:bookingId", auth, authorize('ADMIN'), bookingController.permanentlyDeleteBooking);
+router.delete("/delete/:bookingId", auth, authorize(['ADMIN']), bookingController.permanentlyDeleteBooking);
 
 // Update booking (Front Desk, Staff, Admin, GM)
 router.put("/update/:bookingId", auth, authorize(['FRONT DESK', 'STAFF', 'ADMIN', 'GM']), bookingController.updateBooking);

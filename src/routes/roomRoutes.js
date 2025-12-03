@@ -20,7 +20,7 @@ router.get('/get/:id', auth, authorize(['ADMIN', 'GM', 'ACCOUNTS', 'STAFF', 'FRO
 router.put('/update/:id', auth, authorize(['ADMIN', 'GM']), upload.array('images', 5), roomController.updateRoom);
 
 // Delete room (Admin only)
-router.delete('/delete/:id', auth, authorize('ADMIN'), roomController.deleteRoom);
+router.delete('/delete/:id', auth, authorize(['ADMIN']), roomController.deleteRoom);
 
 // Get rooms by category (All roles)
 router.get('/category/:categoryId', auth, authorize(['ADMIN', 'GM', 'ACCOUNTS', 'STAFF', 'FRONT DESK']), roomController.getRoomsByCategory);

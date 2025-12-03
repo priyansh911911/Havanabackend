@@ -12,7 +12,7 @@ router.get('/booking/:bookingId', auth, authorize(['FRONT DESK', 'ACCOUNTS', 'AD
 
 
 // Update payment status (Accounts, Admin)
-router.put('/:id/payment', auth, authorize(['ACCOUNTS', 'ADMIN']), checkoutController.updatePaymentStatus);
+router.put('/:id/payment', auth, authorize(['ACCOUNTS', 'ADMIN','FRONT DESK']), checkoutController.updatePaymentStatus);
 
 // Generate invoice (Accounts, Admin, Front Desk)
 router.post('/:id/generate-invoice', auth, authorize(['ACCOUNTS', 'ADMIN', 'FRONT DESK']), checkoutController.generateInvoice);

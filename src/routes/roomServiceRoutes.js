@@ -13,19 +13,19 @@ router.get('/all', auth, authorize(['ADMIN', 'GM', 'ACCOUNTS', 'STAFF', 'FRONT D
 router.get('/:id', auth, authorize(['ADMIN', 'GM', 'ACCOUNTS', 'STAFF', 'FRONT DESK']), roomServiceController.getOrderById);
 
 // Update entire order
-router.put('/:id', auth, roomServiceController.updateOrder);
+router.put('/:id', auth, authorize(['ADMIN','STAFF', 'FRONT DESK']),roomServiceController.updateOrder);
 
 // Update room service order (PATCH)
-router.patch('/:id', auth, roomServiceController.updateOrder);
+router.patch('/:id', auth, authorize(['ADMIN','STAFF', 'FRONT DESK']),roomServiceController.updateOrder);
 
 // Update order status (Staff, Front Desk)
-router.patch('/:id/status', auth, roomServiceController.updateOrderStatus);
+router.patch('/:id/status', auth, authorize(['ADMIN','STAFF', 'FRONT DESK']), roomServiceController.updateOrderStatus);
 
 // Update payment status (Accounts, Admin)
-router.patch('/:id/payment', auth, authorize(['ACCOUNTS', 'ADMIN']), roomServiceController.updatePaymentStatus);
+router.patch('/:id/payment', auth, authorize(['ACCOUNTS', 'ADMIN',  'FRONT DESK']), roomServiceController.updatePaymentStatus);
 
 // Generate KOT (Staff, Front Desk)
-router.post('/:id/kot', auth, authorize(['STAFF', 'FRONT DESK']), roomServiceController.generateKOT);
+router.post('/:id/kot', auth, authorize(['ADMIN', 'STAFF', 'FRONT DESK']), roomServiceController.generateKOT);
 
 // Generate Bill (Accounts, Admin, Front Desk)
 router.post('/:id/bill', auth, authorize(['ACCOUNTS', 'ADMIN', 'FRONT DESK']), roomServiceController.generateBill);
@@ -34,12 +34,12 @@ router.post('/:id/bill', auth, authorize(['ACCOUNTS', 'ADMIN', 'FRONT DESK']), r
 router.get('/lookup/bills', auth, authorize(['ACCOUNTS', 'ADMIN', 'FRONT DESK']), roomServiceController.billLookup);
 
 // Get room service charges for checkout (Front Desk, Accounts)
-router.get('/charges/checkout', auth, authorize(['FRONT DESK', 'ACCOUNTS']), roomServiceController.getRoomServiceCharges);
+router.get('/charges/checkout', auth, authorize(['FRONT DESK', 'ACCOUNTS', 'ADMIN']), roomServiceController.getRoomServiceCharges);
 
 // Mark orders as paid (Accounts, Admin)
-router.post('/mark-paid', auth, authorize(['ACCOUNTS', 'ADMIN']), roomServiceController.markOrdersPaid);
+router.post('/mark-paid', auth, authorize(['ACCOUNTS', 'ADMIN',  'FRONT DESK']), roomServiceController.markOrdersPaid);
 
 // Delete order
-router.delete('/:id', auth, roomServiceController.deleteOrder);
+router.delete('/:id', auth, authorize(['ADMIN']), roomServiceController.deleteOrder);
 
 module.exports = router;

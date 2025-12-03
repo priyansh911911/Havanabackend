@@ -16,6 +16,6 @@ router.patch('/:id/status', auth, authorize(['ADMIN', 'GM', 'ACCOUNTS', 'STAFF',
 router.patch('/:id', auth, authorize(['ADMIN', 'GM', 'ACCOUNTS', 'STAFF', 'FRONT DESK']), restaurantOrderController.updateOrder);
 
 // Link existing orders to bookings (Admin, GM)
-router.post('/link-to-bookings', auth, authorize(['ADMIN', 'GM']), restaurantOrderController.linkOrdersToBookings);
+router.post('/link-to-bookings', auth, authorize(['ADMIN', 'GM', 'FRONT DESK']), restaurantOrderController.linkOrdersToBookings);
 
 module.exports = router;
