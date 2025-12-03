@@ -55,13 +55,15 @@ exports.getDashboardStats = async (req, res) => {
     // Parallel queries for better performance
     const [
       totalBookings,
+      activeBookings,
       cancelledBookings,
       cashPayments,
       upiPayments,
       totalRevenue
     ] = await Promise.all([
       Booking.countDocuments(baseQuery),
-      Booking.countDocuments({ ...baseQuery, isActive: false }),
+      Booking.countDocuments({ ...baseQuery, status: 'Checked In' }),
+      Booking.countDocuments({ ...baseQuery, status: 'Cancelled' }),
       Booking.countDocuments({ ...baseQuery, paymentMode: /cash/i }),
       Booking.countDocuments({ ...baseQuery, paymentMode: /upi/i }),
       Booking.aggregate([
@@ -74,8 +76,8 @@ exports.getDashboardStats = async (req, res) => {
       success: true,
       stats: {
         totalBookings,
+        activeBookings,
         cancelledBookings,
-        activeBookings: totalBookings - cancelledBookings,
         payments: {
           cash: cashPayments,
           upi: upiPayments,
