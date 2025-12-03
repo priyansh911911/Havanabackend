@@ -8,8 +8,7 @@ const invoiceSchema = new mongoose.Schema({
   },
   invoiceNumber: {
     type: String,
-    required: true,
-    unique: true
+    sparse: true
   },
   createdAt: {
     type: Date,

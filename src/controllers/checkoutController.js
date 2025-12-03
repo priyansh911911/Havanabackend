@@ -3,7 +3,7 @@ const Booking = require('../models/Booking');
 const Room = require('../models/Room');
 const mongoose = require('mongoose');
 const { TAX_CONFIG } = require('../utils/taxConfig');
-const { generateInvoiceNumber } = require('./invoiceController');
+const Invoice = require('../models/Invoice');
 
 // Create checkout record
 exports.createCheckout = async (req, res) => {
@@ -384,36 +384,18 @@ exports.getInvoice = async (req, res) => {
     const booking = checkout.bookingId;
     const currentDate = new Date();
     
-    // Generate invoice number only if not already generated
-    let billNo = checkout.invoiceNumber;
-    if (!billNo) {
-      try {
-        billNo = await generateInvoiceNumber('monthly', true);
-        checkout.invoiceNumber = billNo;
-        checkout.invoiceGenerated = true;
-        checkout.invoiceGeneratedAt = currentDate;
-        await checkout.save();
-      } catch (invoiceError) {
-        // If invoice generation fails due to duplicate, try to get existing invoice
-        if (invoiceError.message.includes('duplicate') || invoiceError.code === 11000) {
-          // Refresh checkout data to get any invoice number that might have been generated
-          const refreshedCheckout = await Checkout.findById(id);
-          if (refreshedCheckout && refreshedCheckout.invoiceNumber) {
-            billNo = refreshedCheckout.invoiceNumber;
-            checkout.invoiceNumber = billNo;
-          } else {
-            // Generate a new unique invoice number with timestamp
-            const timestamp = Date.now().toString().slice(-4);
-            billNo = await generateInvoiceNumber('monthly', true) + '-' + timestamp;
-            checkout.invoiceNumber = billNo;
-            checkout.invoiceGenerated = true;
-            checkout.invoiceGeneratedAt = currentDate;
-            await checkout.save();
-          }
-        } else {
-          throw invoiceError;
-        }
-      }
+    // Use GRC number as bill number
+    const billNo = booking?.grcNo || 'N/A';
+    
+    // Save invoice record if not already exists
+    try {
+      await Invoice.findOneAndUpdate(
+        { bookingId: booking._id },
+        { bookingId: booking._id, createdAt: currentDate },
+        { upsert: true }
+      );
+    } catch (error) {
+      console.error('Error saving invoice record:', error);
     }
     
     // Use booking's actual GST rates

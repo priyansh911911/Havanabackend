@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const bookingSchema = new mongoose.Schema({
   bookingNo: { type: String, unique: true, index: true },
   grcNo: { type: String, unique: true, required: true },  // Guest Registration Card No
-  invoiceNumber: { type: String },  // Invoice number like HH/12/0001
+  invoiceNumber: { type: String, unique: true },  // Invoice number like HH/12/0001
   categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
 
   bookingDate: { type: Date, default: Date.now },
@@ -164,7 +164,7 @@ const bookingSchema = new mongoose.Schema({
 // Add bookingNo index for fast lookups
 bookingSchema.index({ bookingNo: 1 }, { unique: true });
 
-// Pre-save middleware to generate unique bookingNo
+// Pre-save middleware to generate unique bookingNo and invoiceNumber
 bookingSchema.pre('save', async function(next) {
   if (!this.bookingNo) {
     let unique = false;
@@ -180,6 +180,38 @@ bookingSchema.pre('save', async function(next) {
       await new Promise(resolve => setTimeout(resolve, 1));
     }
   }
+  
+  // Generate invoice number if not exists
+  if (!this.invoiceNumber) {
+    console.log('🔥 Generating invoice number...');
+    const currentDate = new Date();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    
+    // Find all existing invoice numbers (excluding deleted)
+    const existingInvoices = await this.constructor.find({
+      deleted: { $ne: true },
+      invoiceNumber: { $exists: true, $ne: null }
+    }).select('invoiceNumber').lean();
+    
+    console.log('📋 Existing invoices:', existingInvoices);
+    
+    // Extract numbers and find highest
+    let maxNumber = 0;
+    existingInvoices.forEach(invoice => {
+      const parts = invoice.invoiceNumber.split('/');
+      if (parts.length === 3) {
+        const num = parseInt(parts[2]);
+        if (num > maxNumber) maxNumber = num;
+      }
+    });
+    
+    const nextNumber = maxNumber + 1;
+    const sequence = String(nextNumber).padStart(4, '0');
+    this.invoiceNumber = `HH/${month}/${sequence}`;
+    
+    console.log('✅ Generated invoice:', this.invoiceNumber);
+  }
+  
   next();
 });
 
