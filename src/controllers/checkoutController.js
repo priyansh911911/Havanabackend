@@ -209,7 +209,7 @@ exports.getCheckoutByBooking = async (req, res) => {
 exports.updatePaymentStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, paidAmount } = req.body;
+    const { status, paidAmount, lateCheckoutFee } = req.body;
 
     const checkout = await Checkout.findById(id).populate('bookingId');
     if (!checkout) {
@@ -225,9 +225,18 @@ exports.updatePaymentStatus = async (req, res) => {
     if ((status === 'Completed' || status === 'paid') && checkout.bookingId) {
       const booking = checkout.bookingId;
       
-      // Update booking status to 'Checked Out'
+      // Update booking status to 'Checked Out' and set actual checkout time
       booking.status = 'Checked Out';
       booking.paymentStatus = 'Paid';
+      booking.actualCheckOutTime = new Date(); // This triggers late checkout fine calculation
+      
+      // Apply custom late checkout fee if provided
+      if (lateCheckoutFee && lateCheckoutFee > 0) {
+        booking.lateCheckoutFine.amount = lateCheckoutFee;
+        booking.lateCheckoutFine.applied = true;
+        booking.lateCheckoutFine.appliedAt = new Date();
+      }
+      
       await booking.save();
       
       // Handle multiple room numbers (comma-separated)
@@ -560,6 +569,14 @@ exports.getInvoice = async (req, res) => {
       invoice.otherCharges.push({
         particulars: 'ROOM INSPECTION CHARGES',
         amount: checkout.inspectionCharges
+      });
+    }
+
+    // Add late checkout fee if applied
+    if (booking?.lateCheckoutFine?.applied && booking.lateCheckoutFine.amount > 0 && !booking.lateCheckoutFine.waived) {
+      invoice.otherCharges.push({
+        particulars: 'LATE CHECKOUT FEE',
+        amount: booking.lateCheckoutFine.amount
       });
     }
 
