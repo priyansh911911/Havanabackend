@@ -9,4 +9,8 @@ router.get('/:id', auth, authorize(['ADMIN', 'STAFF', 'FRONT DESK']), laundryIte
 router.put('/:id', auth, authorize(['ADMIN', 'STAFF','FRONT DESK']), laundryItemController.updateLaundryItem);
 router.delete('/:id', auth, authorize(['ADMIN']), laundryItemController.deleteLaundryItem);
 
+// Filter routes
+router.get('/category/:category', auth, authorize(['ADMIN', 'STAFF', 'FRONT DESK']), laundryItemController.getLaundryItemsByCategory);
+router.get('/vendor/:vendorId', auth, authorize(['ADMIN', 'STAFF', 'FRONT DESK']), laundryItemController.getLaundryItemsByVendor);
+
 module.exports = router;

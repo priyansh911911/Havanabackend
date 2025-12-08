@@ -20,4 +20,7 @@ router.put("/:id", auth, authorize(['ADMIN', 'STAFF','FRONT DESK']), vendorContr
 router.delete("/delete/:id", auth, authorize(['ADMIN']), vendorController.deleteVendor);
 router.delete("/:id", auth, authorize(['ADMIN']), vendorController.deleteVendor);
 
+// Get active vendors only
+router.get("/active", auth, authorize(['ADMIN', 'STAFF', 'FRONT DESK']), vendorController.getActiveVendors);
+
 module.exports = router;
