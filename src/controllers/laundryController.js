@@ -49,7 +49,20 @@ exports.updateLaundryOrder = async (req, res) => {
 // Update Status
 exports.updateLaundryStatus = async (req, res) => {
   try {
-    const order = await Laundry.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const { laundryStatus, pickupBy, deliveredBy, receivedBy } = req.body;
+    const updateData = { laundryStatus };
+    
+    // Add timestamps based on status
+    if (laundryStatus === 'picked_up') {
+      updateData.pickupTime = new Date();
+      if (pickupBy) updateData.pickupBy = pickupBy;
+    } else if (laundryStatus === 'delivered') {
+      updateData.deliveredTime = new Date();
+      if (deliveredBy) updateData.deliveredBy = deliveredBy;
+      if (receivedBy) updateData.receivedBy = receivedBy;
+    }
+    
+    const order = await Laundry.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
     if (!order) return res.status(404).json({ error: 'Order not found' });
     res.json({ success: true, order });
   } catch (err) {
@@ -112,11 +125,51 @@ exports.getLaundryByBooking = async (req, res) => {
   }
 };
 
+// Get Inhouse Orders
+exports.getInhouseOrders = async (req, res) => {
+  try {
+    const orders = await Laundry.find({ serviceType: 'inhouse' }).sort({ createdAt: -1 });
+    res.json({ success: true, orders });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get Vendor Orders
+exports.getVendorOrders = async (req, res) => {
+  try {
+    const orders = await Laundry.find({ serviceType: 'vendor' }).sort({ createdAt: -1 });
+    res.json({ success: true, orders });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get Available Items by Service Type
+exports.getAvailableItems = async (req, res) => {
+  try {
+    const { serviceType, vendorId } = req.query;
+    
+    let query = { isActive: true };
+    
+    if (serviceType === 'vendor' && vendorId) {
+      query.vendorId = vendorId;
+    } else if (serviceType === 'inhouse') {
+      query.vendorId = { $exists: false };
+    }
+    
+    const items = await LaundryItem.find(query).sort({ category: 1, itemName: 1 });
+    res.json({ success: true, items });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // Report Item Damage/Loss
 exports.reportDamageOrLoss = async (req, res) => {
   try {
     const { itemId } = req.params;
-    const { damageReported, itemNotes } = req.body;
+    const { type, description, compensationAmount, reportedBy } = req.body;
     
     const order = await Laundry.findOne({ 'items._id': itemId });
     if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -124,11 +177,22 @@ exports.reportDamageOrLoss = async (req, res) => {
     const item = order.items.id(itemId);
     if (!item) return res.status(404).json({ error: 'Item not found' });
 
-    item.damageReported = damageReported;
-    if (itemNotes) item.itemNotes = itemNotes;
+    // Update item status
+    item.damageReported = true;
+    item.itemNotes = description;
+    item.status = 'cancelled';
+    
+    // Update order level tracking
+    if (type === 'LOST') {
+      order.isLost = true;
+      order.lostDate = new Date();
+      order.lossNote = description;
+    }
+    order.damageReported = true;
+    order.damageNotes = description;
     
     await order.save();
-    res.json({ success: true, order });
+    res.json({ success: true, order, message: `Item ${type.toLowerCase()} reported successfully` });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

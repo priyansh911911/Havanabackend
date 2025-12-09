@@ -16,10 +16,17 @@ const laundrySchema = new mongoose.Schema({
     ref: "Booking",  
   },
 
-  // 🏢 Vendor Assignment
+  // 🏢 Service Type & Vendor Assignment
+  serviceType: {
+    type: String,
+    enum: ["inhouse", "vendor"],
+    required: true,
+    default: "inhouse"
+  },
   vendorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "LaundryVendor"
+    ref: "LaundryVendor",
+    required: function() { return this.serviceType === 'vendor'; }
   },
 
   // 🧺 Laundry Items
@@ -130,13 +137,38 @@ laundrySchema.pre(/^find/, function(next) {
   .populate({
     path: 'bookingId',
     select: 'roomNumber guestName'
-  })
-  .populate({
-    path: 'items.rateId',
-    select: 'itemName rate category serviceType unit isActive',
-    match: { isActive: true }
   });
   next();
+});
+
+// Dynamic populate based on serviceType
+laundrySchema.post(/^find/, async function(docs) {
+  if (!docs) return;
+  
+  const documents = Array.isArray(docs) ? docs : [docs];
+  
+  for (let doc of documents) {
+    if (doc && doc.items && doc.items.length > 0) {
+      const populateQuery = {
+        isActive: true
+      };
+      
+      // If vendor order, only show vendor's items
+      if (doc.serviceType === 'vendor' && doc.vendorId) {
+        populateQuery.vendorId = doc.vendorId._id || doc.vendorId;
+      }
+      // If inhouse order, only show items without vendorId
+      else if (doc.serviceType === 'inhouse') {
+        populateQuery.vendorId = { $exists: false };
+      }
+      
+      await doc.populate({
+        path: 'items.rateId',
+        select: 'itemName rate category serviceType unit vendorId isActive',
+        match: populateQuery
+      });
+    }
+  }
 });
 
 module.exports = mongoose.model("Laundry", laundrySchema);
