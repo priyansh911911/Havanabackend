@@ -137,7 +137,25 @@ exports.reportDamageOrLoss = async (req, res) => {
 // Create Loss Report
 exports.createLossReport = async (req, res) => {
   try {
-    const lossReport = await LaundryLoss.create(req.body);
+    const { itemId, itemName, itemType, quantity, lossType, estimatedValue, compensationAmount, ...otherData } = req.body;
+    
+    const lostItem = {
+      itemId,
+      itemName,
+      itemType,
+      quantity,
+      lossType,
+      estimatedValue,
+      compensationAmount,
+      calculatedAmount: compensationAmount
+    };
+    
+    const lossReportData = {
+      ...otherData,
+      lostItems: [lostItem]
+    };
+    
+    const lossReport = await LaundryLoss.create(lossReportData);
     res.status(201).json({ success: true, lossReport });
   } catch (err) {
     res.status(400).json({ error: err.message });
