@@ -122,9 +122,20 @@ laundrySchema.pre("save", async function (next) {
 
 // Populate vendor and booking details
 laundrySchema.pre(/^find/, function(next) {
-  this.populate('vendorId', 'vendorName phoneNumber UpiID')
-       .populate('bookingId', 'roomNumber guestName')
-       .populate('items.rateId', 'itemName rate category serviceType');
+  this.populate({
+    path: 'vendorId',
+    select: 'vendorName phoneNumber UpiID isActive',
+    match: { isActive: true }
+  })
+  .populate({
+    path: 'bookingId',
+    select: 'roomNumber guestName'
+  })
+  .populate({
+    path: 'items.rateId',
+    select: 'itemName rate category serviceType unit isActive',
+    match: { isActive: true }
+  });
   next();
 });
 

@@ -15,6 +15,17 @@ exports.createLaundryItem = async (req, res) => {
       return res.status(400).json({ error: 'Rate must be greater than 0' });
     }
     
+    // Validate vendor if provided
+    if (vendorId) {
+      const vendor = await LaundryVendor.findById(vendorId);
+      if (!vendor) {
+        return res.status(400).json({ error: 'Vendor not found' });
+      }
+      if (!vendor.isActive) {
+        return res.status(400).json({ error: 'Vendor is not active' });
+      }
+    }
+    
     const laundryItem = new LaundryItem({ category, serviceType, itemName, rate, unit, vendorId, isActive });
     await laundryItem.save();
     res.status(201).json({ success: true, laundryItem });
@@ -57,6 +68,18 @@ exports.getLaundryItemById = async (req, res) => {
 exports.updateLaundryItem = async (req, res) => {
   try {
     const { category, serviceType, itemName, rate, unit, vendorId, isActive } = req.body;
+    
+    // Validate vendor if provided
+    if (vendorId) {
+      const vendor = await LaundryVendor.findById(vendorId);
+      if (!vendor) {
+        return res.status(400).json({ error: 'Vendor not found' });
+      }
+      if (!vendor.isActive) {
+        return res.status(400).json({ error: 'Vendor is not active' });
+      }
+    }
+    
     const laundryItem = await LaundryItem.findByIdAndUpdate(
       req.params.id,
       { category, serviceType, itemName, rate, unit, vendorId, isActive },

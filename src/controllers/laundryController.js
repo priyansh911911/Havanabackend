@@ -1,222 +1,193 @@
 const Laundry = require('../models/Laundry');
 const LaundryItem = require('../models/LaundryItem');
+const LaundryLoss = require('../models/LaundryLoss');
+const LaundryVendor = require('../models/LaundryVendor');
+const mongoose = require('mongoose');
 
+// Create Order
 exports.createLaundryOrder = async (req, res) => {
   try {
-    const { orderType, bookingId, roomNumber, items } = req.body;
-    
-    // Basic validation - bookingId is more important than roomNumber
-    if (!orderType || (!bookingId && !roomNumber) || !items || items.length === 0) {
-      return res.status(400).json({ error: 'Order type, booking ID (or room number), and items are required' });
-    }
-    
-    const laundry = new Laundry(req.body);
-    await laundry.save();
-    res.status(201).json({ success: true, laundry });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+    const order = await Laundry.create(req.body);
+    res.status(201).json({ success: true, order });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };
 
+// Get All Orders
 exports.getAllLaundryOrders = async (req, res) => {
   try {
-    const orders = await Laundry.find()
-      .sort({ createdAt: -1 });
+    const orders = await Laundry.find().sort({ createdAt: -1 });
     res.json({ success: true, orders });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
+// Get Order by ID
 exports.getLaundryOrderById = async (req, res) => {
   try {
     const order = await Laundry.findById(req.params.id);
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
+    if (!order) return res.status(404).json({ error: 'Order not found' });
     res.json({ success: true, order });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
+// Update Order
 exports.updateLaundryOrder = async (req, res) => {
   try {
-    const order = await Laundry.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
+    const order = await Laundry.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
     res.json({ success: true, order });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };
 
+// Update Status
 exports.updateLaundryStatus = async (req, res) => {
   try {
-    const { laundryStatus } = req.body;
-    
-    // Validate status
-    const validStatuses = ['pending', 'picked_up', 'ready', 'delivered', 'cancelled'];
-    if (!validStatuses.includes(laundryStatus)) {
-      return res.status(400).json({ error: 'Invalid status' });
-    }
-    
-    const updateData = { laundryStatus };
-    
-    // Auto-set timestamps based on status
-    if (laundryStatus === 'picked_up') {
-      updateData.pickupTime = new Date();
-    } else if (laundryStatus === 'delivered') {
-      updateData.deliveredTime = new Date();
-    }
-    
+    const order = await Laundry.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    res.json({ success: true, order });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// Cancel Order
+exports.cancelLaundryOrder = async (req, res) => {
+  try {
     const order = await Laundry.findByIdAndUpdate(
       req.params.id,
-      updateData,
-      { new: true, runValidators: true }
+      { isCancelled: true, laundryStatus: 'cancelled' },
+      { new: true }
     );
-    
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-    
+    if (!order) return res.status(404).json({ error: 'Order not found' });
     res.json({ success: true, order });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
-exports.deleteLaundryOrder = async (req, res) => {
-  try {
-    const order = await Laundry.findByIdAndDelete(req.params.id);
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-    res.json({ success: true, message: 'Order deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
+// Get Orders by Room
 exports.getLaundryByRoom = async (req, res) => {
   try {
-    const { roomNumber } = req.params;
-    const orders = await Laundry.find({ roomNumber })
-      .sort({ createdAt: -1 });
+    const orders = await Laundry.find({ roomNumber: req.params.roomNumber }).sort({ createdAt: -1 });
     res.json({ success: true, orders });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
+// Get Orders by Status
 exports.getLaundryByStatus = async (req, res) => {
   try {
-    const { status } = req.params;
-    const orders = await Laundry.find({ laundryStatus: status })
-      .sort({ createdAt: -1 });
+    const orders = await Laundry.find({ laundryStatus: req.params.status }).sort({ createdAt: -1 });
     res.json({ success: true, orders });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
-// Get orders by vendor
+// Get Orders by Vendor
 exports.getLaundryByVendor = async (req, res) => {
   try {
-    const { vendorId } = req.params;
-    const orders = await Laundry.find({ vendorId })
-      .sort({ createdAt: -1 });
+    const orders = await Laundry.find({ vendorId: req.params.vendorId }).sort({ createdAt: -1 });
     res.json({ success: true, orders });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
-// Get orders by booking ID
+// Get Orders by Booking
 exports.getLaundryByBooking = async (req, res) => {
   try {
-    const { bookingId } = req.params;
-    const orders = await Laundry.find({ bookingId })
-      .sort({ createdAt: -1 });
+    const orders = await Laundry.find({ bookingId: req.params.bookingId }).sort({ createdAt: -1 });
     res.json({ success: true, orders });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
-// Get orders by date range
-// exports.getLaundryByDateRange = async (req, res) => {
-//   try {
-//     const { startDate, endDate } = req.query;
-//     const query = {};
+// Report Item Damage/Loss
+exports.reportDamageOrLoss = async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const { damageReported, itemNotes } = req.body;
     
-//     if (startDate && endDate) {
-//       query.createdAt = {
-//         $gte: new Date(startDate),
-//         $lte: new Date(endDate)
-//       };
-//     }
-    
-//     const orders = await Laundry.find(query)
-//       .sort({ createdAt: -1 });
-//     res.json({ success: true, orders });
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// };
+    const order = await Laundry.findOne({ 'items._id': itemId });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
 
-// // Get laundry statistics
-// exports.getLaundryStats = async (req, res) => {
-//   try {
-//     const totalOrders = await Laundry.countDocuments();
-//     const pendingOrders = await Laundry.countDocuments({ laundryStatus: 'pending' });
-//     const pickedUpOrders = await Laundry.countDocuments({ laundryStatus: 'picked_up' });
-//     const readyOrders = await Laundry.countDocuments({ laundryStatus: 'ready' });
-//     const deliveredOrders = await Laundry.countDocuments({ laundryStatus: 'delivered' });
-    
-//     const totalRevenue = await Laundry.aggregate([
-//       { $group: { _id: null, total: { $sum: '$totalAmount' } } }
-//     ]);
-    
-//     res.json({ 
-//       success: true, 
-//       stats: {
-//         totalOrders,
-//         pendingOrders,
-//         pickedUpOrders,
-//         readyOrders,
-//         deliveredOrders,
-//         totalRevenue: totalRevenue[0]?.total || 0
-//       }
-//     });
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// };
+    const item = order.items.id(itemId);
+    if (!item) return res.status(404).json({ error: 'Item not found' });
 
-// // Search orders
-// exports.searchLaundryOrders = async (req, res) => {
-//   try {
-//     const { query } = req.query;
-//     if (!query) {
-//       return res.status(400).json({ error: 'Search query is required' });
-//     }
+    item.damageReported = damageReported;
+    if (itemNotes) item.itemNotes = itemNotes;
     
-//     const orders = await Laundry.find({
-//       $or: [
-//         { roomNumber: { $regex: query, $options: 'i' } },
-//         { requestedByName: { $regex: query, $options: 'i' } },
-//         { grcNo: { $regex: query, $options: 'i' } }
-//       ]
-//     }).sort({ createdAt: -1 });
-    
-//     res.json({ success: true, orders });
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// };
+    await order.save();
+    res.json({ success: true, order });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// Create Loss Report
+exports.createLossReport = async (req, res) => {
+  try {
+    const lossReport = await LaundryLoss.create(req.body);
+    res.status(201).json({ success: true, lossReport });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// Get All Loss Reports
+exports.getAllLossReports = async (req, res) => {
+  try {
+    const reports = await LaundryLoss.find().populate('orderId').sort({ createdAt: -1 });
+    res.json({ success: true, reports });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get Loss Report by ID
+exports.getLossReportById = async (req, res) => {
+  try {
+    const report = await LaundryLoss.findById(req.params.id).populate('orderId');
+    if (!report) return res.status(404).json({ error: 'Loss report not found' });
+    res.json({ success: true, report });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Update Loss Report Status
+exports.updateLossReportStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const report = await LaundryLoss.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true, runValidators: true }
+    );
+    if (!report) return res.status(404).json({ error: 'Loss report not found' });
+    res.json({ success: true, report });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// Delete Order
+exports.deleteLaundry = async (req, res) => {
+  try {
+    const order = await Laundry.findByIdAndDelete(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    res.json({ success: true, message: 'Order deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
