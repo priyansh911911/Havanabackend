@@ -8,6 +8,7 @@ const laundrySchema = new mongoose.Schema({
     required: true
   },
   grcNo: String,
+  invoiceNumber: String,
   roomNumber: String,
   requestedByName: String, // Guest name
 
@@ -102,8 +103,24 @@ const laundrySchema = new mongoose.Schema({
 }, { timestamps: true });
 
 
-// Auto-calc total + auto-fill item details from LaundryItem
+// Auto-fill booking details and calculate totals
 laundrySchema.pre("save", async function (next) {
+  // Auto-fill from booking if bookingId provided
+  if (this.bookingId && (this.isNew || this.isModified('bookingId'))) {
+    try {
+      const booking = await mongoose.model("Booking").findById(this.bookingId);
+      if (booking) {
+        if (!this.roomNumber) this.roomNumber = booking.roomNumber;
+        if (!this.grcNo) this.grcNo = booking.grcNo;
+        if (!this.invoiceNumber) this.invoiceNumber = booking.invoiceNumber;
+        if (!this.requestedByName) this.requestedByName = booking.guestName;
+      }
+    } catch (error) {
+      console.log('Error fetching booking:', error);
+    }
+  }
+
+  // Auto-calc total + auto-fill item details from LaundryItem
   if (this.items?.length) {
     let total = 0;
     for (let item of this.items) {
@@ -138,7 +155,7 @@ laundrySchema.pre(/^find/, function(next) {
   })
   .populate({
     path: 'bookingId',
-    select: 'roomNumber guestName'
+    select: 'roomNumber guestName invoiceNumber grcNo'
   });
   next();
 });
