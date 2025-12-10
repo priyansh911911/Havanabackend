@@ -179,22 +179,19 @@ exports.reportDamageOrLoss = async (req, res) => {
 // Create Loss Report
 exports.createLossReport = async (req, res) => {
   try {
-    const { itemId, itemName, itemType, quantity, lossType, estimatedValue, compensationAmount, ...otherData } = req.body;
+    const { orderId, roomNumber, guestName, lostItems, lossNote, reportedBy } = req.body;
     
-    const lostItem = {
-      itemId,
-      itemName,
-      itemType,
-      quantity,
-      lossType,
-      estimatedValue,
-      compensationAmount,
-      calculatedAmount: compensationAmount
-    };
+    // Calculate total loss amount
+    const totalLossAmount = lostItems.reduce((total, item) => total + (item.calculatedAmount || 0), 0);
     
     const lossReportData = {
-      ...otherData,
-      lostItems: [lostItem]
+      orderId,
+      roomNumber,
+      guestName,
+      lostItems,
+      lossNote,
+      reportedBy,
+      totalLossAmount
     };
     
     const lossReport = await LaundryLoss.create(lossReportData);
@@ -207,9 +204,12 @@ exports.createLossReport = async (req, res) => {
 // Get All Loss Reports
 exports.getAllLossReports = async (req, res) => {
   try {
+    console.log('Getting all loss reports...');
     const reports = await LaundryLoss.find().populate('orderId').sort({ createdAt: -1 });
-    res.json({ success: true, reports });
+    console.log('Found reports:', reports.length);
+    res.json({ success: true, reports, count: reports.length });
   } catch (err) {
+    console.error('Error getting loss reports:', err);
     res.status(500).json({ error: err.message });
   }
 };
