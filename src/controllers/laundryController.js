@@ -49,20 +49,8 @@ exports.updateLaundryOrder = async (req, res) => {
 // Update Status
 exports.updateLaundryStatus = async (req, res) => {
   try {
-    const { laundryStatus, pickupBy, deliveredBy, receivedBy } = req.body;
-    const updateData = { laundryStatus };
-    
-    // Add timestamps based on status
-    if (laundryStatus === 'picked_up') {
-      updateData.pickupTime = new Date();
-      if (pickupBy) updateData.pickupBy = pickupBy;
-    } else if (laundryStatus === 'delivered') {
-      updateData.deliveredTime = new Date();
-      if (deliveredBy) updateData.deliveredBy = deliveredBy;
-      if (receivedBy) updateData.receivedBy = receivedBy;
-    }
-    
-    const order = await Laundry.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
+    const { laundryStatus } = req.body;
+    const order = await Laundry.findByIdAndUpdate(req.params.id, { laundryStatus }, { new: true, runValidators: true });
     if (!order) return res.status(404).json({ error: 'Order not found' });
     res.json({ success: true, order });
   } catch (err) {
@@ -75,7 +63,7 @@ exports.cancelLaundryOrder = async (req, res) => {
   try {
     const order = await Laundry.findByIdAndUpdate(
       req.params.id,
-      { isCancelled: true, laundryStatus: 'cancelled' },
+      { laundryStatus: 'cancelled' },
       { new: true }
     );
     if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -169,7 +157,7 @@ exports.getAvailableItems = async (req, res) => {
 exports.reportDamageOrLoss = async (req, res) => {
   try {
     const { itemId } = req.params;
-    const { type, description, compensationAmount, reportedBy } = req.body;
+    const { description } = req.body;
     
     const order = await Laundry.findOne({ 'items._id': itemId });
     if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -177,22 +165,12 @@ exports.reportDamageOrLoss = async (req, res) => {
     const item = order.items.id(itemId);
     if (!item) return res.status(404).json({ error: 'Item not found' });
 
-    // Update item status
     item.damageReported = true;
     item.itemNotes = description;
     item.status = 'cancelled';
     
-    // Update order level tracking
-    if (type === 'LOST') {
-      order.isLost = true;
-      order.lostDate = new Date();
-      order.lossNote = description;
-    }
-    order.damageReported = true;
-    order.damageNotes = description;
-    
     await order.save();
-    res.json({ success: true, order, message: `Item ${type.toLowerCase()} reported successfully` });
+    res.json({ success: true, order, message: 'Item damage reported successfully' });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -271,5 +249,46 @@ exports.deleteLaundry = async (req, res) => {
     res.json({ success: true, message: 'Order deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+// Update Item Status
+exports.updateItemStatus = async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const { status, deliveredQuantity } = req.body;
+    
+    const order = await Laundry.findOne({ 'items._id': itemId });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    const item = order.items.id(itemId);
+    if (!item) return res.status(404).json({ error: 'Item not found' });
+
+    item.status = status;
+    if (deliveredQuantity !== undefined) {
+      item.deliveredQuantity = deliveredQuantity;
+    }
+    
+    await order.save();
+    res.json({ success: true, order, message: 'Item status updated successfully' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// Update Vendor Details
+exports.updateVendorDetails = async (req, res) => {
+  try {
+    const { vendorOrderId, vendorNotes, vendorPickupTime, vendorDeliveryTime } = req.body;
+    
+    const order = await Laundry.findByIdAndUpdate(
+      req.params.id,
+      { vendorOrderId, vendorNotes, vendorPickupTime, vendorDeliveryTime },
+      { new: true, runValidators: true }
+    );
+    
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    res.json({ success: true, order });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 };
