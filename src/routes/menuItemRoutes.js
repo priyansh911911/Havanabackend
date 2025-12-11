@@ -15,11 +15,11 @@ router.get("/", auth, authorize(['ADMIN', 'GM', 'ACCOUNTS', 'STAFF', 'FRONT DESK
 // Get menu by food type (All roles)
 router.get("/foodtype/:foodType", auth, authorize(['ADMIN', 'GM', 'ACCOUNTS', 'STAFF', 'FRONT DESK']), getMenuByFoodType);
 
-// Add menu item (Admin, GM)
-router.post("/", auth, authorize(['ADMIN', 'GM']), addMenuItem);
+// Add menu item (Admin, GM, Front Desk)
+router.post("/", auth, authorize(['ADMIN', 'GM', 'FRONT DESK']), addMenuItem);
 
-// Update menu item (Admin, GM)
-router.put("/:id", auth, authorize(['ADMIN', 'GM']), updateMenuItem);
+// Update menu item (Admin, GM, Front Desk)
+router.put("/:id", auth, authorize(['ADMIN', 'GM', 'FRONT DESK']), updateMenuItem);
 
 // Delete menu item (Admin only)
 router.delete("/:id", auth, authorize('ADMIN'), deleteMenuItem);

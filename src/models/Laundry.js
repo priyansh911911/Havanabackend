@@ -32,7 +32,7 @@ const laundrySchema = new mongoose.Schema({
     deliveredQuantity: { type: Number, default: 0, min: 0 },
     status: {
       type: String,
-      enum: ["pending", "picked_up", "ready", "delivered", "cancelled"],
+      enum: ["pending", "picked_up", "ready", "delivered", "cancelled", "lost"],
       default: "pending"
     },
     calculatedAmount: { type: Number, default: 0 },
@@ -42,7 +42,7 @@ const laundrySchema = new mongoose.Schema({
   }],
   laundryStatus: {
     type: String,
-    enum: ["pending", "picked_up", "ready", "delivered", "cancelled"],
+    enum: ["pending", "picked_up", "ready", "delivered", "cancelled", "lost"],
     default: "pending"
   },
   totalAmount: { type: Number, default: 0 },
