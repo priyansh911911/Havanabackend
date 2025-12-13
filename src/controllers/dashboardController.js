@@ -175,18 +175,27 @@ exports.downloadDashboardCSV = async (req, res) => {
 
     // Create CSV data with individual metrics
     const csvData = [
-      ['Total Bookings', totalBookings],
-      ['Active Bookings', activeBookings], 
-      ['Cancelled Bookings', cancelledBookings],
-      ['Total Revenue', totalRevenue[0]?.total || 0],
-      ['Online Payments', onlinePayments],
-      ['Cash Payments', cashPayments],
-      ['Restaurant Orders', restaurantOrders],
-      ['Laundry Orders', laundryOrders]
+      ['Metric', 'Count', 'Amount'],
+      ['Total Bookings', totalBookings, `Rs.${totalRevenue[0]?.total || 0}`],
+      ['Active Bookings', activeBookings, ''], 
+      ['Cancelled Bookings', cancelledBookings, ''],
+      ['Online Payments', onlinePayments, ''],
+      ['Cash Payments', cashPayments, ''],
+      ['Restaurant Orders', restaurantOrders, ''],
+      ['Laundry Orders', laundryOrders, ''],
+      ['', '', ''],
+      ['SUMMARY', '', ''],
+      ['Total Revenue', '', `Rs.${totalRevenue[0]?.total || 0}`],
+      ['Total Orders (All Services)', totalBookings + restaurantOrders + laundryOrders, ''],
+      ['Payment Breakdown:', '', ''],
+      ['- Online Payments', onlinePayments, ''],
+      ['- Cash Payments', cashPayments, '']
     ];
 
     // Convert to CSV string
-    const csvString = csvData.map(row => row.join(',')).join('\n');
+    const csvString = csvData.map(row => 
+      row.map(cell => `"${cell || ''}"`).join(',')
+    ).join('\n');
 
     // Set headers for CSV download
     const timestamp = new Date().toISOString().split('T')[0];
@@ -206,15 +215,23 @@ exports.exportTotalBookings = async (req, res) => {
     const dateFilter = getDateFilter(filter, startDate, endDate);
     const bookings = await Booking.find({ deleted: { $ne: true }, ...dateFilter }).select('name mobileNo checkInDate checkOutDate rate status createdAt');
     const csvData = [['Guest Name', 'Phone', 'Check In', 'Check Out', 'Rate', 'Status', 'Booking Date']];
-    bookings.forEach(b => csvData.push([
-      b.name, 
-      b.mobileNo, 
-      formatDate(b.checkInDate), 
-      formatDate(b.checkOutDate), 
-      b.rate, 
-      b.status, 
-      formatDate(b.createdAt)
-    ]));
+    let totalAmount = 0;
+    bookings.forEach(b => {
+      csvData.push([
+        b.name, 
+        b.mobileNo, 
+        formatDate(b.checkInDate), 
+        formatDate(b.checkOutDate), 
+        b.rate, 
+        b.status, 
+        formatDate(b.createdAt)
+      ]);
+      totalAmount += (b.rate || 0);
+    });
+    // Add total rows
+    csvData.push(['', '', '', '', '', '', '']);
+    csvData.push(['TOTAL BOOKINGS:', bookings.length, '', '', '', '', '']);
+    csvData.push(['TOTAL AMOUNT:', '', '', '', `Rs.${totalAmount}`, '', '']);
     sendCSV(res, csvData, 'total-bookings');
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -227,13 +244,20 @@ exports.exportActiveBookings = async (req, res) => {
     const dateFilter = getDateFilter(filter, startDate, endDate);
     const bookings = await Booking.find({ deleted: { $ne: true }, status: 'Checked In', ...dateFilter }).select('name mobileNo checkInDate rate roomNumber');
     const csvData = [['Guest Name', 'Phone', 'Check In Date', 'Rate', 'Room Number']];
-    bookings.forEach(b => csvData.push([
-      b.name, 
-      b.mobileNo, 
-      formatDate(b.checkInDate), 
-      b.rate, 
-      b.roomNumber
-    ]));
+    let totalAmount = 0;
+    bookings.forEach(b => {
+      csvData.push([
+        b.name, 
+        b.mobileNo, 
+        formatDate(b.checkInDate), 
+        b.rate, 
+        b.roomNumber
+      ]);
+      totalAmount += (b.rate || 0);
+    });
+    // Add total row
+    csvData.push(['', '', '', '', '']);
+    csvData.push(['TOTAL ACTIVE BOOKINGS:', bookings.length, '', `Rs.${totalAmount}`, '']);
     sendCSV(res, csvData, 'active-bookings');
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -246,13 +270,20 @@ exports.exportCancelledBookings = async (req, res) => {
     const dateFilter = getDateFilter(filter, startDate, endDate);
     const bookings = await Booking.find({ deleted: { $ne: true }, status: 'Cancelled', ...dateFilter }).select('name mobileNo checkInDate rate createdAt');
     const csvData = [['Guest Name', 'Phone', 'Check In Date', 'Rate', 'Cancelled Date']];
-    bookings.forEach(b => csvData.push([
-      b.name, 
-      b.mobileNo, 
-      formatDate(b.checkInDate), 
-      b.rate, 
-      formatDate(b.createdAt)
-    ]));
+    let totalAmount = 0;
+    bookings.forEach(b => {
+      csvData.push([
+        b.name, 
+        b.mobileNo, 
+        formatDate(b.checkInDate), 
+        b.rate, 
+        formatDate(b.createdAt)
+      ]);
+      totalAmount += (b.rate || 0);
+    });
+    // Add total row
+    csvData.push(['', '', '', '', '']);
+    csvData.push(['TOTAL CANCELLED BOOKINGS:', bookings.length, '', `Rs.${totalAmount}`, '']);
     sendCSV(res, csvData, 'cancelled-bookings');
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -265,12 +296,19 @@ exports.exportRevenue = async (req, res) => {
     const dateFilter = getDateFilter(filter, startDate, endDate);
     const bookings = await Booking.find({ deleted: { $ne: true }, ...dateFilter }).select('name rate paymentMode createdAt');
     const csvData = [['Guest Name', 'Amount', 'Payment Mode', 'Date']];
-    bookings.forEach(b => csvData.push([
-      b.name, 
-      b.rate, 
-      b.paymentMode, 
-      formatDate(b.createdAt)
-    ]));
+    let totalRevenue = 0;
+    bookings.forEach(b => {
+      csvData.push([
+        b.name, 
+        b.rate, 
+        b.paymentMode, 
+        formatDate(b.createdAt)
+      ]);
+      totalRevenue += (b.rate || 0);
+    });
+    // Add total row
+    csvData.push(['', '', '', '']);
+    csvData.push(['TOTAL REVENUE:', `Rs.${totalRevenue}`, '', '']);
     sendCSV(res, csvData, 'revenue-report');
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -283,12 +321,19 @@ exports.exportOnlinePayments = async (req, res) => {
     const dateFilter = getDateFilter(filter, startDate, endDate);
     const bookings = await Booking.find({ deleted: { $ne: true }, paymentMode: /upi|online|card/i, ...dateFilter }).select('name rate paymentMode createdAt');
     const csvData = [['Guest Name', 'Amount', 'Payment Mode', 'Date']];
-    bookings.forEach(b => csvData.push([
-      b.name, 
-      b.rate, 
-      b.paymentMode, 
-      formatDate(b.createdAt)
-    ]));
+    let totalAmount = 0;
+    bookings.forEach(b => {
+      csvData.push([
+        b.name, 
+        b.rate, 
+        b.paymentMode, 
+        formatDate(b.createdAt)
+      ]);
+      totalAmount += (b.rate || 0);
+    });
+    // Add total row
+    csvData.push(['', '', '', '']);
+    csvData.push(['TOTAL ONLINE PAYMENTS:', `Rs.${totalAmount}`, '', '']);
     sendCSV(res, csvData, 'online-payments');
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -301,12 +346,19 @@ exports.exportCashPayments = async (req, res) => {
     const dateFilter = getDateFilter(filter, startDate, endDate);
     const bookings = await Booking.find({ deleted: { $ne: true }, paymentMode: /cash/i, ...dateFilter }).select('name rate paymentMode createdAt');
     const csvData = [['Guest Name', 'Amount', 'Payment Mode', 'Date']];
-    bookings.forEach(b => csvData.push([
-      b.name, 
-      b.rate, 
-      b.paymentMode, 
-      formatDate(b.createdAt)
-    ]));
+    let totalAmount = 0;
+    bookings.forEach(b => {
+      csvData.push([
+        b.name, 
+        b.rate, 
+        b.paymentMode, 
+        formatDate(b.createdAt)
+      ]);
+      totalAmount += (b.rate || 0);
+    });
+    // Add total row
+    csvData.push(['', '', '', '']);
+    csvData.push(['TOTAL CASH PAYMENTS:', `Rs.${totalAmount}`, '', '']);
     sendCSV(res, csvData, 'cash-payments');
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -319,13 +371,20 @@ exports.exportRestaurantOrders = async (req, res) => {
     const dateFilter = getDateFilter(filter, startDate, endDate);
     const orders = await RestaurantOrder.find(dateFilter).select('customerName tableNo amount status createdAt');
     const csvData = [['Customer Name', 'Table No', 'Amount', 'Status', 'Order Date']];
-    orders.forEach(o => csvData.push([
-      o.customerName, 
-      o.tableNo, 
-      o.amount, 
-      o.status, 
-      formatDate(o.createdAt)
-    ]));
+    let totalAmount = 0;
+    orders.forEach(o => {
+      csvData.push([
+        o.customerName, 
+        o.tableNo, 
+        o.amount, 
+        o.status, 
+        formatDate(o.createdAt)
+      ]);
+      totalAmount += (o.amount || 0);
+    });
+    // Add total row
+    csvData.push(['', '', '', '', '']);
+    csvData.push(['TOTAL RESTAURANT ORDERS:', orders.length, `Rs.${totalAmount}`, '', '']);
     sendCSV(res, csvData, 'restaurant-orders');
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -338,17 +397,26 @@ exports.exportLaundryOrders = async (req, res) => {
     const dateFilter = getDateFilter(filter, startDate, endDate);
     const orders = await Laundry.find(dateFilter).select('roomNumber grcNo requestedByName laundryStatus serviceType totalAmount items createdAt invoiceNumber');
     const csvData = [['Invoice Number', 'Room Number', 'GRC No', 'Requested By', 'Status', 'Service Type', 'Total Amount', 'Items Count', 'Order Date']];
-    orders.forEach(o => csvData.push([
-      o.invoiceNumber || '',
-      o.roomNumber || '', 
-      o.grcNo || '', 
-      o.requestedByName || '', 
-      o.laundryStatus || '', 
-      o.serviceType || '',
-      o.totalAmount || 0,
-      o.items?.length || 0,
-      formatDate(o.createdAt)
-    ]));
+    let totalAmount = 0;
+    let totalItems = 0;
+    orders.forEach(o => {
+      csvData.push([
+        o.invoiceNumber || '',
+        o.roomNumber || '', 
+        o.grcNo || '', 
+        o.requestedByName || '', 
+        o.laundryStatus || '', 
+        o.serviceType || '',
+        o.totalAmount || 0,
+        o.items?.length || 0,
+        formatDate(o.createdAt)
+      ]);
+      totalAmount += (o.totalAmount || 0);
+      totalItems += (o.items?.length || 0);
+    });
+    // Add total row
+    csvData.push(['', '', '', '', '', '', '', '', '']);
+    csvData.push(['TOTAL LAUNDRY ORDERS:', orders.length, '', '', '', '', `Rs.${totalAmount}`, totalItems, '']);
     sendCSV(res, csvData, 'laundry-orders');
   } catch (error) {
     res.status(500).json({ error: error.message });
